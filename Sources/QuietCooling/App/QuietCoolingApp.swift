@@ -13,10 +13,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let automaticTerminationReason = "QuietCooling menu bar controller"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        NSApp.setActivationPolicy(.regular)
         ProcessInfo.processInfo.disableAutomaticTermination(automaticTerminationReason)
         ProcessInfo.processInfo.disableSuddenTermination()
         QuietCoolingRuntime.shared.start()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        QuietCoolingRuntime.shared.showControlsWindow()
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -36,19 +41,27 @@ final class QuietCoolingRuntime {
 
     private var model: AppModel?
     private var statusItemController: AppKitStatusItemController?
+    private var controlsWindowController: AppKitControlsWindowController?
 
     func configure(model: AppModel) {
         self.model = model
         self.statusItemController = AppKitStatusItemController(model: model)
+        self.controlsWindowController = AppKitControlsWindowController(model: model)
     }
 
     func start() {
         model?.start()
         statusItemController?.install()
+        showControlsWindow()
+    }
+
+    func showControlsWindow() {
+        controlsWindowController?.show()
     }
 
     func stop() {
         statusItemController?.remove()
+        controlsWindowController?.close()
         model?.stopAndRelease()
     }
 }

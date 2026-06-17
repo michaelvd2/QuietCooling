@@ -26,13 +26,17 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         statusItem?.button?.toolTip
     }
 
+    var buttonTitle: String {
+        statusItem?.button?.title ?? ""
+    }
+
     func install() {
         guard statusItem == nil else {
             updateStatusItem()
             return
         }
 
-        let item = NSStatusBar.system.statusItem(withLength: 30)
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.isVisible = true
         statusItem = item
 
@@ -40,7 +44,7 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
             button.target = self
             button.action = #selector(togglePopover(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.imagePosition = .imageOnly
+            button.imagePosition = .imageLeading
             button.setAccessibilityLabel("QuietCooling")
         }
 
@@ -88,9 +92,18 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
             filledBladeCount: model.menuBarFilledBladeCount,
             temperatureText: model.menuBarTemperatureBadge
         )
+        button.title = statusTitle()
         button.toolTip = model.menuBarTooltip
         button.setAccessibilityValue(model.menuBarTooltip)
         statusItem?.isVisible = true
+    }
+
+    private func statusTitle() -> String {
+        if let temperature = model.menuBarTemperatureBadge {
+            return "QC \(temperature)"
+        }
+
+        return "QC"
     }
 
     private func showPopover(relativeTo button: NSStatusBarButton) {
