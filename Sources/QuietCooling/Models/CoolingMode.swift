@@ -21,6 +21,15 @@ enum CoolingMode: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    var selectorTitle: String {
+        switch self {
+        case .preventFanBlast:
+            "Prevent"
+        default:
+            title
+        }
+    }
+
     var compactIndicator: String {
         switch self {
         case .off:
@@ -31,6 +40,15 @@ enum CoolingMode: String, CaseIterable, Codable, Identifiable {
             "Q"
         case .preventFanBlast:
             "P"
+        }
+    }
+
+    var requiresFanControl: Bool {
+        switch self {
+        case .off, .system:
+            false
+        case .alwaysQuiet, .preventFanBlast:
+            true
         }
     }
 }

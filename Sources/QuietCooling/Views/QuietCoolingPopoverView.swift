@@ -9,14 +9,7 @@ struct QuietCoolingPopoverView: View {
 
             StatusPanel(model: model)
 
-            Picker("Mode", selection: $model.selectedMode) {
-                ForEach(CoolingMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .disabled(!model.canAdjustControls && model.selectedMode != .off && model.selectedMode != .system)
+            ModeSelector(model: model)
 
             QuietCeilingControl(model: model)
 
@@ -73,22 +66,56 @@ struct QuietCoolingPopoverView: View {
                 )
             )
             .toggleStyle(.checkbox)
+            .accessibilityLabel("Launch at login")
+            .accessibilityValue(model.launchAtLogin ? "On" : "Off")
 
             Spacer()
 
-            Button {
+            Button("Settings") {
                 model.showingSettings.toggle()
-            } label: {
-                Label("Settings", systemImage: "gearshape")
             }
+            .accessibilityLabel("Settings")
 
-            Button(role: .destructive) {
+            Button("Quit", role: .destructive) {
                 model.quit()
-            } label: {
-                Label("Quit", systemImage: "power")
             }
+            .accessibilityLabel("Quit")
         }
         .font(.caption)
+    }
+}
+
+private struct ModeSelector: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(CoolingMode.allCases) { mode in
+                let isSelected = model.selectedMode == mode
+                Button(mode.selectorTitle) {
+                    model.setSelectedMode(mode)
+                }
+                .buttonStyle(.borderless)
+                .disabled(!model.canSelectMode(mode))
+                .opacity(model.canSelectMode(mode) ? 1 : 0.42)
+                .font(.caption2.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity, minHeight: 28)
+                .padding(.horizontal, 4)
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(isSelected ? Color.primary.opacity(0.11) : .clear)
+                )
+                .accessibilityLabel(mode.title)
+                .accessibilityValue(isSelected ? "Selected" : "Not selected")
+            }
+        }
+        .padding(3)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Mode")
     }
 }
 
