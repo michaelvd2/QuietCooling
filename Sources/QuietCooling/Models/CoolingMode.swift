@@ -42,13 +42,4 @@ enum CoolingMode: String, CaseIterable, Codable, Identifiable {
             "P"
         }
     }
-
-    var requiresFanControl: Bool {
-        switch self {
-        case .off, .system:
-            false
-        case .alwaysQuiet, .preventFanBlast:
-            true
-        }
-    }
 }

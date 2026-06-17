@@ -3,7 +3,7 @@ import XCTest
 
 final class AppModelTests: XCTestCase {
     @MainActor
-    func testUnsupportedFanControlModeFallsBackToSystemAndDoesNotPersist() {
+    func testFanControlModeCanBeSelectedWhenWritesAreUnavailable() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
         var preferences = UserPreferences.defaults
@@ -13,13 +13,15 @@ final class AppModelTests: XCTestCase {
 
         model.selectedMode = .alwaysQuiet
 
-        XCTAssertEqual(model.selectedMode, .system)
-        XCTAssertEqual(fixture.store.load().selectedMode, .system)
-        XCTAssertEqual(model.status, .followingMacOS)
+        XCTAssertEqual(model.selectedMode, .alwaysQuiet)
+        XCTAssertEqual(fixture.store.load().selectedMode, .alwaysQuiet)
+        XCTAssertEqual(model.status, .fanControlUnavailable("Native backend not connected"))
+        XCTAssertTrue(model.canSelectMode(.alwaysQuiet))
+        XCTAssertTrue(model.canSelectMode(.preventFanBlast))
     }
 
     @MainActor
-    func testUnsupportedPersistedModeFallsBackToSystemOnLaunch() {
+    func testPersistedFanControlModeSurvivesLaunchWhenWritesAreUnavailable() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
         var preferences = UserPreferences.defaults
@@ -27,10 +29,11 @@ final class AppModelTests: XCTestCase {
         fixture.store.save(preferences)
 
         let model = makeRestrictedModel(preferencesStore: fixture.store)
+        model.tick()
 
-        XCTAssertEqual(model.selectedMode, .system)
-        XCTAssertEqual(fixture.store.load().selectedMode, .system)
-        XCTAssertEqual(model.status, .followingMacOS)
+        XCTAssertEqual(model.selectedMode, .alwaysQuiet)
+        XCTAssertEqual(fixture.store.load().selectedMode, .alwaysQuiet)
+        XCTAssertEqual(model.status, .fanControlUnavailable("Native backend not connected"))
     }
 
     @MainActor
@@ -48,11 +51,11 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(helperManager.registerCallCount, 1)
         XCTAssertEqual(model.helperInstallStatus, .requiresApproval)
         XCTAssertNil(model.lastErrorMessage)
-        XCTAssertEqual(model.selectedMode, .system)
+        XCTAssertEqual(model.selectedMode, UserPreferences.defaults.selectedMode)
     }
 
     @MainActor
-    func testInstallHelperFailureDoesNotEnableFanControlModes() {
+    func testInstallHelperFailureStillAllowsSelectingUnavailableFanControlModes() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
         let helperManager = RecordingHelperServiceManager(
@@ -68,7 +71,8 @@ final class AppModelTests: XCTestCase {
 
         XCTAssertEqual(helperManager.registerCallCount, 1)
         XCTAssertEqual(model.helperInstallStatus, .failed("The operation couldn’t be completed. (QuietCoolingTests error 7.)"))
-        XCTAssertEqual(model.selectedMode, .system)
+        XCTAssertEqual(model.selectedMode, .alwaysQuiet)
+        XCTAssertEqual(model.status, .fanControlUnavailable("Native backend not connected"))
     }
 
     @MainActor

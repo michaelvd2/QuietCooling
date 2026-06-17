@@ -8,14 +8,6 @@ final class AppModel: ObservableObject {
 
     @Published var selectedMode: CoolingMode {
         didSet {
-            let supportedMode = Self.supportedMode(
-                selectedMode,
-                canControlFans: fanController.canControlFans(),
-                fallback: oldValue
-            )
-            if selectedMode != supportedMode {
-                selectedMode = supportedMode
-            }
             persistPreferences()
             tick()
         }
@@ -63,18 +55,13 @@ final class AppModel: ObservableObject {
         hardwareNotice: String? = nil
     ) {
         let preferences = preferencesStore.load()
-        let initialSelectedMode = Self.supportedMode(
-            preferences.selectedMode,
-            canControlFans: fanController.canControlFans(),
-            fallback: .system
-        )
         self.preferencesStore = preferencesStore
         self.fanController = fanController
         self.sensorProvider = sensorProvider
         self.loginItemManager = loginItemManager
         self.helperServiceManager = helperServiceManager
         self.mockSensorProvider = sensorProvider as? MockThermalSensorProvider
-        self.selectedMode = initialSelectedMode
+        self.selectedMode = preferences.selectedMode
         self.quietCeilingRPM = preferences.quietCeilingRPM
         self.preCoolingStrength = preferences.preCoolingStrength
         self.launchAtLogin = preferences.launchAtLogin
@@ -87,9 +74,6 @@ final class AppModel: ObservableObject {
             self.hardwareNotice = "Using mock hardware backend. Native fan control is not connected."
         }
 
-        if initialSelectedMode != preferences.selectedMode {
-            persistPreferences()
-        }
     }
 
     convenience init(
@@ -144,19 +128,11 @@ final class AppModel: ObservableObject {
     }
 
     func canSelectMode(_ mode: CoolingMode) -> Bool {
-        Self.supportedMode(
-            mode,
-            canControlFans: fanController.canControlFans(),
-            fallback: selectedMode
-        ) == mode
+        true
     }
 
     func setSelectedMode(_ mode: CoolingMode) {
-        selectedMode = Self.supportedMode(
-            mode,
-            canControlFans: fanController.canControlFans(),
-            fallback: selectedMode
-        )
+        selectedMode = mode
     }
 
     func start() {
@@ -313,19 +289,4 @@ final class AppModel: ObservableObject {
         )
     }
 
-    private static func supportedMode(
-        _ mode: CoolingMode,
-        canControlFans: Bool,
-        fallback: CoolingMode
-    ) -> CoolingMode {
-        if !mode.requiresFanControl || canControlFans {
-            return mode
-        }
-
-        if !fallback.requiresFanControl || canControlFans {
-            return fallback
-        }
-
-        return .system
-    }
 }
