@@ -5,6 +5,7 @@ import Combine
 final class AppKitVisibilityAnchorController: NSObject {
     private let model: AppModel
     private let onOpenControls: @MainActor () -> Void
+    private let badgeSize = NSSize(width: 58, height: 32)
     private var panel: NSPanel?
     private weak var button: NSButton?
     private var modelObserver: AnyCancellable?
@@ -39,6 +40,14 @@ final class AppKitVisibilityAnchorController: NSObject {
         button?.toolTip
     }
 
+    var panelSize: NSSize {
+        panel?.frame.size ?? .zero
+    }
+
+    var buttonHasContrastBackground: Bool {
+        button?.layer?.backgroundColor != nil
+    }
+
     func show() {
         let anchorPanel = panel ?? makePanel()
         panel = anchorPanel
@@ -66,7 +75,7 @@ final class AppKitVisibilityAnchorController: NSObject {
 
     private func makePanel() -> NSPanel {
         let anchorPanel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 42, height: 30),
+            contentRect: NSRect(origin: .zero, size: badgeSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -79,13 +88,19 @@ final class AppKitVisibilityAnchorController: NSObject {
         anchorPanel.backgroundColor = .clear
         anchorPanel.hasShadow = false
 
-        let button = NSButton(frame: NSRect(x: 0, y: 0, width: 42, height: 30))
+        let button = NSButton(frame: NSRect(origin: .zero, size: badgeSize))
         button.target = self
         button.action = #selector(openControls(_:))
         button.isBordered = false
         button.imagePosition = .imageOnly
+        button.imageScaling = .scaleProportionallyUpOrDown
         button.title = ""
         button.toolTip = model.menuBarTooltip
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 9
+        button.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.56).cgColor
+        button.layer?.borderColor = NSColor.black.withAlphaComponent(0.08).cgColor
+        button.layer?.borderWidth = 0.5
         button.setAccessibilityLabel("Open QuietCooling")
         anchorPanel.contentView = button
         self.button = button
@@ -95,7 +110,7 @@ final class AppKitVisibilityAnchorController: NSObject {
     private func position(_ anchorPanel: NSPanel) {
         let frame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let size = anchorPanel.frame.size
-        let cropAlignedX = frame.minX + max(0, frame.width - 860)
+        let cropAlignedX = frame.minX + max(0, frame.width - 650)
         let origin = NSPoint(
             x: min(frame.maxX - size.width - 14, cropAlignedX),
             y: frame.maxY - size.height

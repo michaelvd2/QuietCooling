@@ -16,6 +16,8 @@ final class AppKitVisibilityAnchorControllerTests: XCTestCase {
         XCTAssertTrue(controller.windowCollectionBehavior.contains(.fullScreenAuxiliary))
         XCTAssertEqual(controller.buttonTitle, "")
         XCTAssertNotNil(controller.buttonImage)
+        XCTAssertGreaterThanOrEqual(controller.panelSize.width, 54)
+        XCTAssertTrue(controller.buttonHasContrastBackground)
     }
 
     func testPressRequestsControlsWindow() {
