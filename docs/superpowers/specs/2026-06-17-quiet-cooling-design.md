@@ -12,7 +12,7 @@ The app is menu-bar-only and opens a compact popover titled "Quiet Cooling." The
 
 - Off: release fan control and show Off.
 - System: release fan control and show Following macOS.
-- Always Quiet: set the minimum fan RPM to the quiet ceiling when fan control is available.
+- Always Quiet: set the minimum fan RPM floor to the quiet ceiling when fan control is available. This is not a maximum cap; macOS can still go higher.
 - Prevent Fan Blast: ramp the minimum fan RPM earlier between 45-65°C, hold quiet ceiling between 65-75°C, and release above 75°C.
 
 ## Architecture
@@ -25,4 +25,4 @@ The app never replaces Apple's thermal curve. It applies a minimum RPM floor onl
 
 ## MVP Backend
 
-The first backend is a mock backend. It supports the full UI and controller flow while making the native privileged fan backend explicit future work.
+The app prefers real Apple Silicon temperature telemetry through `macmon` when available. Fan write control remains disabled unless the native backend can prove it can set a minimum fan floor; otherwise the UI shows that a helper is required. Mock hardware remains a fallback for development.

@@ -13,9 +13,11 @@ This repo builds a native SwiftUI menu bar app with:
 - persisted settings
 - a 2-second controller loop
 - explicit fan/sensor protocols
-- a mock hardware backend for development and UI testing
+- real Apple Silicon temperature telemetry through `macmon` when it is installed
+- a safe read-only fan backend that disables controls when fan writes require a helper
+- a mock hardware backend as fallback for development and UI testing
 
-The MVP intentionally does not include real SMC or Apple Silicon fan control yet. The UI shows a mock-backend notice so it does not pretend to control physical fans. Connect the native privileged backend behind `FanControllerProtocol` and `ThermalSensorProviderProtocol`.
+The MVP does not claim writable fan control on Apple Silicon unless the backend can actually set a minimum fan floor. On this M4 Pro, fan write access appears to require a privileged QuietCooling helper, so the app shows real temperatures but disables fan controls instead of pretending to control physical fans.
 
 ## Build, Test, Run
 
@@ -32,7 +34,7 @@ The run script stages `dist/QuietCooling.app` and launches it as a menu-bar-only
 QuietCooling computes a minimum fan floor, not a replacement thermal curve.
 
 - Off/System release control back to macOS.
-- Always Quiet applies the quiet ceiling as a minimum RPM when supported.
+- Always Quiet applies the quiet ceiling as a minimum RPM floor when supported. It is not a maximum fan cap.
 - Prevent Fan Blast ramps from the hardware minimum toward the quiet ceiling between 45-65°C, holds the quiet ceiling from 65-75°C, and releases control above 75°C.
 - All RPM values are clamped to the reported hardware range.
 - Fanless, restricted, sensor-failure, and unknown-range states are surfaced honestly.
@@ -40,4 +42,4 @@ QuietCooling computes a minimum fan floor, not a replacement thermal curve.
 
 ## Native Backend Work
 
-The production fan backend still needs a privileged/native implementation. See [docs/native-backend.md](docs/native-backend.md).
+The production fan write backend still needs a privileged/native helper. See [docs/native-backend.md](docs/native-backend.md).

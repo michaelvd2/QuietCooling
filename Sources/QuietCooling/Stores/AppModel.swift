@@ -51,7 +51,8 @@ final class AppModel: ObservableObject {
         preferencesStore: PreferencesStore = PreferencesStore(),
         fanController: FanControllerProtocol,
         sensorProvider: ThermalSensorProviderProtocol,
-        loginItemManager: LoginItemManaging = LoginItemManager()
+        loginItemManager: LoginItemManaging = LoginItemManager(),
+        hardwareNotice: String? = nil
     ) {
         let preferences = preferencesStore.load()
         self.preferencesStore = preferencesStore
@@ -66,9 +67,25 @@ final class AppModel: ObservableObject {
         self.menuBarDisplayMode = preferences.menuBarDisplayMode
         self.showModeIndicator = preferences.showModeIndicator
 
-        if fanController.isMockBackend {
-            hardwareNotice = "Using mock hardware backend. Native fan control is not connected."
+        if let hardwareNotice {
+            self.hardwareNotice = hardwareNotice
+        } else if fanController.isMockBackend {
+            self.hardwareNotice = "Using mock hardware backend. Native fan control is not connected."
         }
+    }
+
+    convenience init(
+        preferencesStore: PreferencesStore = PreferencesStore(),
+        hardwareBackend: HardwareBackend,
+        loginItemManager: LoginItemManaging = LoginItemManager()
+    ) {
+        self.init(
+            preferencesStore: preferencesStore,
+            fanController: hardwareBackend.fanController,
+            sensorProvider: hardwareBackend.sensorProvider,
+            loginItemManager: loginItemManager,
+            hardwareNotice: hardwareBackend.notice.displayText
+        )
     }
 
     static func demo() -> AppModel {
@@ -118,6 +135,7 @@ final class AppModel: ObservableObject {
         timer?.invalidate()
         timer = nil
         fanController.releaseAllFans()
+        (sensorProvider as? HardwareBackendStoppable)?.stop()
     }
 
     func quit() {

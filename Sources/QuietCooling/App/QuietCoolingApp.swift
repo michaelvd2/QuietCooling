@@ -13,7 +13,7 @@ struct QuietCoolingApp: App {
     @StateObject private var model: AppModel
 
     init() {
-        let appModel = AppModel.demo()
+        let appModel = AppModel(hardwareBackend: HardwareBackendFactory.makeDefault())
         _model = StateObject(wrappedValue: appModel)
         appModel.start()
     }

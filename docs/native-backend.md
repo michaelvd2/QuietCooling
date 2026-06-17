@@ -1,6 +1,6 @@
 # Native Backend Notes
 
-QuietCooling currently uses `MockFanController` and `MockThermalSensorProvider`. This is deliberate: real fan control on modern Macs usually requires privileged access to SMC-like interfaces, model-specific handling, and careful failure behavior.
+QuietCooling now prefers real Apple Silicon temperature telemetry through `macmon` when it is installed. Fan writes are still disabled unless QuietCooling can prove the backend can set a minimum fan floor. This is deliberate: real fan control on modern Macs usually requires privileged access to SMC-like interfaces, model-specific handling, and careful failure behavior.
 
 ## Interfaces To Implement
 
@@ -35,4 +35,4 @@ The native sensor provider must support:
 
 ## Suggested Native Strategy
 
-Start with a read-only backend that lists fans, RPM, ranges, and hottest sensor temperature. Only add write control after read behavior is stable and the app can prove it releases cleanly on quit and failure. If write access requires a helper, keep the helper API narrow: set minimum fan RPM and release fan control only.
+The current app has the read-only/fallback structure in place. Next, add a QuietCooling-owned privileged helper. Keep the helper API narrow: set minimum fan RPM and release fan control only. Do not add arbitrary SMC key writes or user-editable low-level curves.

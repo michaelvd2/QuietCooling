@@ -46,6 +46,26 @@ final class CoolingPolicyTests: XCTestCase {
         XCTAssertEqual(decision.status, .alwaysQuiet)
     }
 
+    func testAlwaysQuietKeepsQuietCeilingAsFloorWhenSystemIsAlreadyHigher() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .alwaysQuiet,
+                temperatureC: 70,
+                currentRPM: 3_500,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_200,
+                strength: .medium,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil
+            )
+        )
+
+        XCTAssertEqual(decision.command, .setMinimumRPM(2_200))
+        XCTAssertEqual(decision.targetRPM, 2_200)
+        XCTAssertEqual(decision.status, .alwaysQuiet)
+    }
+
     func testPreventFanBlastReleasesBelowCoolThreshold() {
         let decision = CoolingPolicy.decide(
             CoolingInputs(
