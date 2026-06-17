@@ -16,9 +16,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         ProcessInfo.processInfo.disableAutomaticTermination(automaticTerminationReason)
         ProcessInfo.processInfo.disableSuddenTermination()
+        QuietCoolingRuntime.shared.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        QuietCoolingRuntime.shared.stop()
         ProcessInfo.processInfo.enableSuddenTermination()
         ProcessInfo.processInfo.enableAutomaticTermination(automaticTerminationReason)
     }
@@ -28,10 +30,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+@MainActor
+final class QuietCoolingRuntime {
+    static let shared = QuietCoolingRuntime()
+
+    private var model: AppModel?
+    private var statusItemController: AppKitStatusItemController?
+
+    func configure(model: AppModel) {
+        self.model = model
+        self.statusItemController = AppKitStatusItemController(model: model)
+    }
+
+    func start() {
+        model?.start()
+        statusItemController?.install()
+    }
+
+    func stop() {
+        statusItemController?.remove()
+        model?.stopAndRelease()
+    }
+}
+
 @main
 struct QuietCoolingApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var model: AppModel
 
     init() {
         if CommandLine.arguments.contains("--diagnose-helper") {
@@ -39,31 +63,13 @@ struct QuietCoolingApp: App {
         }
 
         let appModel = AppModel(hardwareBackend: HardwareBackendFactory.makeDefault())
-        _model = StateObject(wrappedValue: appModel)
-        appModel.start()
+        QuietCoolingRuntime.shared.configure(model: appModel)
     }
 
     var body: some Scene {
-        MenuBarExtra {
-            QuietCoolingPopoverView(model: model)
-                .onDisappear {
-                    model.tick()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    model.stopAndRelease()
-                }
-        } label: {
-            Image(nsImage: MenuBarStatusItemImage.make(
-                filledBladeCount: model.menuBarFilledBladeCount,
-                temperatureText: model.menuBarTemperatureBadge
-            ))
-            .interpolation(.high)
-            .frame(width: 24, height: 22)
-            .help(model.menuBarTooltip)
-            .accessibilityLabel("QuietCooling")
-            .accessibilityValue(model.menuBarTooltip)
+        Settings {
+            EmptyView()
         }
-        .menuBarExtraStyle(.window)
     }
 }
 
