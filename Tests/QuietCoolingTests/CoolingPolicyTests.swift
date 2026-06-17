@@ -184,6 +184,48 @@ final class CoolingPolicyTests: XCTestCase {
         XCTAssertEqual(releaseDecision.targetRPM, nil)
     }
 
+    func testPreventFanBlastCustomStrengthUsesCustomPreCoolingCeiling() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 70,
+                currentRPM: 1_800,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_400,
+                customPreCoolingCeilingRPM: 3_600,
+                strength: .custom,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil
+            )
+        )
+
+        XCTAssertEqual(decision.command, .setMinimumRPM(3_600))
+        XCTAssertEqual(decision.targetRPM, 3_600)
+        XCTAssertEqual(decision.status, .preCooling(boostRPM: 1_800))
+    }
+
+    func testPreventFanBlastCustomStrengthStillReleasesAtMaximumCoolingThreshold() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 75,
+                currentRPM: 3_800,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_400,
+                customPreCoolingCeilingRPM: 3_600,
+                strength: .custom,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil
+            )
+        )
+
+        XCTAssertEqual(decision.command, .release)
+        XCTAssertNil(decision.targetRPM)
+        XCTAssertEqual(decision.status, .followingMacOS)
+    }
+
     func testPreventFanBlastReleasesWhenSystemIsAlreadyAbovePlannedTarget() {
         let decision = CoolingPolicy.decide(
             CoolingInputs(

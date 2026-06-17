@@ -4,6 +4,7 @@ struct UserPreferences: Equatable {
     var selectedMode: CoolingMode
     var quietCeilingRPM: Int
     var manualTargetRPM: Int
+    var customPreCoolingCeilingRPM: Int
     var preCoolingStrength: PreCoolingStrength
     var launchAtLogin: Bool
     var selectedSensorID: String?
@@ -12,6 +13,7 @@ struct UserPreferences: Equatable {
         selectedMode: .preventFanBlast,
         quietCeilingRPM: 2_200,
         manualTargetRPM: 2_800,
+        customPreCoolingCeilingRPM: 3_400,
         preCoolingStrength: .medium,
         launchAtLogin: false,
         selectedSensorID: nil
@@ -23,6 +25,7 @@ final class PreferencesStore {
         static let selectedMode = "selectedMode"
         static let quietCeilingRPM = "quietCeilingRPM"
         static let manualTargetRPM = "manualTargetRPM"
+        static let customPreCoolingCeilingRPM = "customPreCoolingCeilingRPM"
         static let preCoolingStrength = "preCoolingStrength"
         static let launchAtLogin = "launchAtLogin"
         static let selectedSensorID = "selectedSensorID"
@@ -46,6 +49,9 @@ final class PreferencesStore {
             manualTargetRPM: validManualTarget(
                 defaults.object(forKey: Key.manualTargetRPM) as? Int
             ),
+            customPreCoolingCeilingRPM: validCustomPreCoolingCeiling(
+                defaults.object(forKey: Key.customPreCoolingCeilingRPM) as? Int
+            ),
             preCoolingStrength: enumValue(
                 forKey: Key.preCoolingStrength,
                 default: UserPreferences.defaults.preCoolingStrength
@@ -59,6 +65,7 @@ final class PreferencesStore {
         defaults.set(preferences.selectedMode.rawValue, forKey: Key.selectedMode)
         defaults.set(preferences.quietCeilingRPM, forKey: Key.quietCeilingRPM)
         defaults.set(preferences.manualTargetRPM, forKey: Key.manualTargetRPM)
+        defaults.set(preferences.customPreCoolingCeilingRPM, forKey: Key.customPreCoolingCeilingRPM)
         defaults.set(preferences.preCoolingStrength.rawValue, forKey: Key.preCoolingStrength)
         defaults.set(preferences.launchAtLogin, forKey: Key.launchAtLogin)
 
@@ -94,6 +101,14 @@ final class PreferencesStore {
     private func validManualTarget(_ storedValue: Int?) -> Int {
         guard let storedValue, storedValue > 0 else {
             return UserPreferences.defaults.manualTargetRPM
+        }
+
+        return storedValue
+    }
+
+    private func validCustomPreCoolingCeiling(_ storedValue: Int?) -> Int {
+        guard let storedValue, storedValue > 0 else {
+            return UserPreferences.defaults.customPreCoolingCeilingRPM
         }
 
         return storedValue

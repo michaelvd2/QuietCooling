@@ -27,6 +27,13 @@ final class AppModel: ObservableObject {
         }
     }
 
+    @Published private(set) var customPreCoolingCeilingRPM: Int {
+        didSet {
+            persistPreferences()
+            tick()
+        }
+    }
+
     @Published private(set) var temporaryTestRPM: Int {
         didSet {
             if isTemporaryFanTestActive {
@@ -90,6 +97,7 @@ final class AppModel: ObservableObject {
         self.selectedMode = preferences.selectedMode
         self.quietCeilingRPM = preferences.quietCeilingRPM
         self.manualTargetRPM = preferences.manualTargetRPM
+        self.customPreCoolingCeilingRPM = preferences.customPreCoolingCeilingRPM
         self.temporaryTestRPM = max(preferences.manualTargetRPM, 3_200)
         self.preCoolingStrength = preferences.preCoolingStrength
         self.launchAtLogin = preferences.launchAtLogin
@@ -164,12 +172,20 @@ final class AppModel: ObservableObject {
         rpmControlRange()
     }
 
+    var customPreCoolingCeilingRange: ClosedRange<Double> {
+        customPreCoolingRange()
+    }
+
     var manualTargetRPMForControls: Int {
         clampedControlRPM(manualTargetRPM)
     }
 
     var temporaryTestRPMForControls: Int {
         clampedControlRPM(temporaryTestRPM)
+    }
+
+    var customPreCoolingCeilingRPMForControls: Int {
+        clampedCustomPreCoolingRPM(customPreCoolingCeilingRPM)
     }
 
     var canAdjustControls: Bool {
@@ -186,6 +202,10 @@ final class AppModel: ObservableObject {
 
     func setManualTargetRPM(_ rpm: Int) {
         manualTargetRPM = clampedControlRPM(rpm)
+    }
+
+    func setCustomPreCoolingCeilingRPM(_ rpm: Int) {
+        customPreCoolingCeilingRPM = clampedCustomPreCoolingRPM(rpm)
     }
 
     func setTemporaryTestRPM(_ rpm: Int) {
@@ -276,6 +296,7 @@ final class AppModel: ObservableObject {
         selectedMode = defaults.selectedMode
         quietCeilingRPM = defaults.quietCeilingRPM
         manualTargetRPM = defaults.manualTargetRPM
+        customPreCoolingCeilingRPM = defaults.customPreCoolingCeilingRPM
         temporaryTestRPM = max(defaults.manualTargetRPM, 3_200)
         isTemporaryFanTestActive = false
         preCoolingStrength = defaults.preCoolingStrength
@@ -310,6 +331,7 @@ final class AppModel: ObservableObject {
                 currentRPM: currentRPM,
                 fanRange: fanRange,
                 quietCeilingRPM: quietCeilingRPM,
+                customPreCoolingCeilingRPM: customPreCoolingCeilingRPMForControls,
                 strength: preCoolingStrength,
                 hasFans: !fans.isEmpty,
                 canControlFans: fanController.canControlFans(),
@@ -358,6 +380,7 @@ final class AppModel: ObservableObject {
                 selectedMode: selectedMode,
                 quietCeilingRPM: quietCeilingRPM,
                 manualTargetRPM: manualTargetRPM,
+                customPreCoolingCeilingRPM: customPreCoolingCeilingRPM,
                 preCoolingStrength: preCoolingStrength,
                 launchAtLogin: launchAtLogin,
                 selectedSensorID: nil
@@ -376,6 +399,18 @@ final class AppModel: ObservableObject {
         let baseline = min(rpmControlBaseline, range.maximumRPM)
         let roundedRPM = Int((Double(rpm) / 50).rounded() * 50)
         return min(max(roundedRPM, baseline), range.maximumRPM)
+    }
+
+    private func customPreCoolingRange() -> ClosedRange<Double> {
+        let range = fans.first?.range ?? FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
+        let lowerBound = min(max(quietCeilingRPM, rpmControlBaseline, range.minimumRPM), range.maximumRPM)
+        return Double(lowerBound)...Double(range.maximumRPM)
+    }
+
+    private func clampedCustomPreCoolingRPM(_ rpm: Int) -> Int {
+        let range = customPreCoolingRange()
+        let roundedRPM = Int((Double(rpm) / 50).rounded() * 50)
+        return min(max(roundedRPM, Int(range.lowerBound)), Int(range.upperBound))
     }
 
     private func updateObservedSystemBaseline(currentRPM: Int?) {

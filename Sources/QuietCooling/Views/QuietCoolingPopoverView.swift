@@ -24,7 +24,13 @@ struct QuietCoolingPopoverView: View {
                 .pickerStyle(.segmented)
                 .disabled(!model.canAdjustControls)
 
-                Text("Pre-cools within your quiet range. macOS can still go full blast when needed.")
+                if model.preCoolingStrength == .custom {
+                    CustomPreCoolingCeilingControl(model: model)
+                }
+
+                Text(model.preCoolingStrength == .custom
+                    ? "Pre-cools up to your custom ceiling. macOS can still go full blast when needed."
+                    : "Pre-cools within your quiet range. macOS can still go full blast when needed.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -244,6 +250,25 @@ private struct ManualRPMControl: View {
             value: Binding(
                 get: { Double(model.manualTargetRPMForControls) },
                 set: { model.setManualTargetRPM(Int($0)) }
+            )
+        )
+    }
+}
+
+private struct CustomPreCoolingCeilingControl: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        RPMControlShell(
+            label: "Custom ceiling",
+            systemImage: "dial.medium",
+            valueText: DisplayFormatters.fanRPM(model.customPreCoolingCeilingRPMForControls),
+            range: model.customPreCoolingCeilingRange,
+            lowerLabel: "Min \(DisplayFormatters.fanRPM(Int(model.customPreCoolingCeilingRange.lowerBound)))",
+            isEnabled: model.canAdjustControls,
+            value: Binding(
+                get: { Double(model.customPreCoolingCeilingRPMForControls) },
+                set: { model.setCustomPreCoolingCeilingRPM(Int($0)) }
             )
         )
     }

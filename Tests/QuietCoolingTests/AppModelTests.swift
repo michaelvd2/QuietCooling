@@ -94,6 +94,23 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCustomPreCoolingCeilingPersistsWhenChanged() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.setCustomPreCoolingCeilingRPM(3_650)
+
+        XCTAssertEqual(model.customPreCoolingCeilingRPM, 3_650)
+        XCTAssertEqual(fixture.store.load().customPreCoolingCeilingRPM, 3_650)
+    }
+
+    @MainActor
     func testTemporaryFanTestOverridesModeWithoutPersisting() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }

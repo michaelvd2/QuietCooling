@@ -6,6 +6,7 @@ struct CoolingInputs: Equatable {
     var currentRPM: Int?
     var fanRange: FanRange?
     var quietCeilingRPM: Int
+    var customPreCoolingCeilingRPM: Int? = nil
     var strength: PreCoolingStrength
     var hasFans: Bool
     var canControlFans: Bool
@@ -81,6 +82,11 @@ enum CoolingPolicy {
         }
 
         let quietCeiling = fanRange.clamped(inputs.quietCeilingRPM)
+        let preCoolingCeiling = fanRange.clamped(
+            inputs.strength == .custom
+                ? max(inputs.customPreCoolingCeilingRPM ?? quietCeiling, quietCeiling)
+                : quietCeiling
+        )
 
         func observedSystemBaseline() -> Int {
             fanRange.clamped(inputs.systemBaselineRPM ?? inputs.currentRPM ?? fanRange.minimumRPM)
@@ -161,13 +167,13 @@ enum CoolingPolicy {
 
             let target: Int
             if temperatureC >= configuration.rampEndThresholdC {
-                target = quietCeiling
+                target = preCoolingCeiling
             } else {
                 let rawProgress = (temperatureC - configuration.coolThresholdC)
                     / (configuration.rampEndThresholdC - configuration.coolThresholdC)
                 let shapedProgress = pow(min(max(rawProgress, 0), 1), inputs.strength.rampExponent)
                 let rpm = Double(fanRange.minimumRPM)
-                    + (Double(quietCeiling - fanRange.minimumRPM) * shapedProgress)
+                    + (Double(preCoolingCeiling - fanRange.minimumRPM) * shapedProgress)
                 target = fanRange.clamped(Int(rpm.rounded()))
             }
 
