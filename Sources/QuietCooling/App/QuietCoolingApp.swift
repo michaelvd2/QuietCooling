@@ -34,13 +34,15 @@ struct QuietCoolingApp: App {
                     model.stopAndRelease()
                 }
         } label: {
-            HStack(spacing: 4) {
-                MenuBarFanIcon(filledBladeCount: model.menuBarFilledBladeCount)
-
-                if let menuBarTitle = model.menuBarTitle {
-                    Text(menuBarTitle)
-                }
-            }
+            Image(nsImage: MenuBarStatusItemImage.make(
+                filledBladeCount: model.menuBarFilledBladeCount,
+                temperatureText: model.menuBarTemperatureBadge
+            ))
+            .interpolation(.high)
+            .frame(width: 24, height: 22)
+            .help(model.menuBarTooltip)
+            .accessibilityLabel("QuietCooling")
+            .accessibilityValue(model.menuBarTooltip)
         }
         .menuBarExtraStyle(.window)
     }

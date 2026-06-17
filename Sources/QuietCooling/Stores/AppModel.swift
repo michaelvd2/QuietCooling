@@ -141,6 +141,14 @@ final class AppModel: ObservableObject {
         )
     }
 
+    var menuBarTemperatureBadge: String? {
+        MenuBarFormatter.badgeTemperature(temperatureC: temperatureC)
+    }
+
+    var menuBarTooltip: String {
+        MenuBarFormatter.tooltip(fanRPM: fanRPM)
+    }
+
     var quietCeilingRange: ClosedRange<Double> {
         guard let range = fans.first?.range else {
             return 1_200...3_000

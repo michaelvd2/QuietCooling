@@ -3,15 +3,16 @@ import SwiftUI
 
 struct MenuBarFanIcon: View {
     var filledBladeCount: Int
+    var size: CGFloat = 18
 
     var body: some View {
         Image(nsImage: MenuBarFanTemplateImage.make(filledBladeCount: clampedFilledBladeCount))
             .interpolation(.high)
             .resizable()
             .aspectRatio(1, contentMode: .fit)
-        .frame(width: 18, height: 18)
-        .accessibilityLabel("Fan strength")
-        .accessibilityValue("\(clampedFilledBladeCount) of 4")
+            .frame(width: size, height: size)
+            .accessibilityLabel("Fan strength")
+            .accessibilityValue("\(clampedFilledBladeCount) of 4")
     }
 
     private var clampedFilledBladeCount: Int {

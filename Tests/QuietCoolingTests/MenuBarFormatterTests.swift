@@ -46,4 +46,11 @@ final class MenuBarFormatterTests: XCTestCase {
         XCTAssertEqual(fanText, "Q 1860 RPM")
         XCTAssertEqual(tempText, "58°C")
     }
+
+    func testCompactBadgeUsesSmallTemperatureAndRPMTooltip() {
+        XCTAssertEqual(MenuBarFormatter.badgeTemperature(temperatureC: 58.4), "58°")
+        XCTAssertNil(MenuBarFormatter.badgeTemperature(temperatureC: nil))
+        XCTAssertEqual(MenuBarFormatter.tooltip(fanRPM: 1_860), "1,860 RPM")
+        XCTAssertEqual(MenuBarFormatter.tooltip(fanRPM: nil), "Fan RPM unavailable")
+    }
 }
