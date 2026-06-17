@@ -46,7 +46,7 @@ final class CoolingPolicyTests: XCTestCase {
         XCTAssertEqual(decision.status, .alwaysQuiet)
     }
 
-    func testAlwaysQuietKeepsQuietCeilingAsFloorWhenSystemIsAlreadyHigher() {
+    func testAlwaysQuietReleasesWhenSystemIsAlreadyCoolingHarderThanQuietCeiling() {
         let decision = CoolingPolicy.decide(
             CoolingInputs(
                 mode: .alwaysQuiet,
@@ -61,9 +61,49 @@ final class CoolingPolicyTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(decision.command, .setMinimumRPM(2_200))
-        XCTAssertEqual(decision.targetRPM, 2_200)
-        XCTAssertEqual(decision.status, .alwaysQuiet)
+        XCTAssertEqual(decision.command, .release)
+        XCTAssertEqual(decision.targetRPM, nil)
+        XCTAssertEqual(decision.status, .followingMacOS)
+    }
+
+    func testAlwaysQuietReleasesWhenQuietCeilingOnlyClampsToHardwareMinimum() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .alwaysQuiet,
+                temperatureC: 60,
+                currentRPM: 1_150,
+                fanRange: fanRange,
+                quietCeilingRPM: 800,
+                strength: .medium,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil
+            )
+        )
+
+        XCTAssertEqual(decision.command, .release)
+        XCTAssertNil(decision.targetRPM)
+        XCTAssertEqual(decision.status, .followingMacOS)
+    }
+
+    func testAlwaysQuietReleasesAtMaximumCoolingThreshold() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .alwaysQuiet,
+                temperatureC: 75,
+                currentRPM: 3_500,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_200,
+                strength: .medium,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil
+            )
+        )
+
+        XCTAssertEqual(decision.command, .release)
+        XCTAssertNil(decision.targetRPM)
+        XCTAssertEqual(decision.status, .followingMacOS)
     }
 
     func testPreventFanBlastReleasesBelowCoolThreshold() {
@@ -142,6 +182,46 @@ final class CoolingPolicyTests: XCTestCase {
         XCTAssertEqual(releaseDecision.command, .release)
         XCTAssertEqual(releaseDecision.status, .followingMacOS)
         XCTAssertEqual(releaseDecision.targetRPM, nil)
+    }
+
+    func testPreventFanBlastReleasesWhenSystemIsAlreadyAbovePlannedTarget() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 70,
+                currentRPM: 3_100,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_400,
+                strength: .medium,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil
+            )
+        )
+
+        XCTAssertEqual(decision.command, .release)
+        XCTAssertNil(decision.targetRPM)
+        XCTAssertEqual(decision.status, .followingMacOS)
+    }
+
+    func testPreventFanBlastReleasesWhenPlannedTargetIsOnlyHardwareMinimum() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 45,
+                currentRPM: 1_150,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_400,
+                strength: .medium,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil
+            )
+        )
+
+        XCTAssertEqual(decision.command, .release)
+        XCTAssertNil(decision.targetRPM)
+        XCTAssertEqual(decision.status, .followingMacOS)
     }
 
     func testHardwareLimitationsReturnHonestStatusWithoutApplyingControl() {

@@ -16,11 +16,13 @@ struct CoolingPolicyConfiguration: Equatable {
     var coolThresholdC: Double
     var rampEndThresholdC: Double
     var systemReleaseThresholdC: Double
+    var minimumManualBoostRPM: Int
 
     static let defaults = CoolingPolicyConfiguration(
         coolThresholdC: 45,
         rampEndThresholdC: 65,
-        systemReleaseThresholdC: 75
+        systemReleaseThresholdC: 75,
+        minimumManualBoostRPM: 75
     )
 }
 
@@ -74,10 +76,31 @@ enum CoolingPolicy {
 
         let quietCeiling = fanRange.clamped(inputs.quietCeilingRPM)
 
+        func shouldReleaseInsteadOfWriting(targetRPM: Int) -> Bool {
+            guard targetRPM > fanRange.minimumRPM else {
+                return true
+            }
+
+            if let currentRPM = inputs.currentRPM {
+                return targetRPM < currentRPM + configuration.minimumManualBoostRPM
+            }
+
+            return false
+        }
+
         switch inputs.mode {
         case .off, .system:
             return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
         case .alwaysQuiet:
+            if let temperatureC = inputs.temperatureC,
+               temperatureC >= configuration.systemReleaseThresholdC {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
+            }
+
+            if shouldReleaseInsteadOfWriting(targetRPM: quietCeiling) {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
+            }
+
             return CoolingDecision(
                 command: .setMinimumRPM(quietCeiling),
                 status: .alwaysQuiet,
@@ -92,7 +115,7 @@ enum CoolingPolicy {
                 return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
             }
 
-            if temperatureC > configuration.systemReleaseThresholdC {
+            if temperatureC >= configuration.systemReleaseThresholdC {
                 return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
             }
 
@@ -106,6 +129,10 @@ enum CoolingPolicy {
                 let rpm = Double(fanRange.minimumRPM)
                     + (Double(quietCeiling - fanRange.minimumRPM) * shapedProgress)
                 target = fanRange.clamped(Int(rpm.rounded()))
+            }
+
+            if shouldReleaseInsteadOfWriting(targetRPM: target) {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
             }
 
             let boostRPM = max(0, target - (inputs.currentRPM ?? target))

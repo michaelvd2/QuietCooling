@@ -94,12 +94,21 @@ enum HardwareBackendFactory {
             )
         }
 
-        return HardwareBackend(
-            fanController: PrivilegedHelperFanController(
+        let fanController: FanControllerProtocol = snapshot.canWriteFanFloors
+            ? PrivilegedHelperFanController(
                 fallbackFans: snapshot.fans,
                 fallbackRPMByFanID: snapshot.rpmByFanID,
                 fallbackLimitationReason: snapshot.limitationReason
-            ),
+            )
+            : ReadOnlyFanController(
+                backendName: "Native SMC",
+                fans: snapshot.fans,
+                currentRPMByFanID: snapshot.rpmByFanID,
+                limitationReason: snapshot.limitationReason
+            )
+
+        return HardwareBackend(
+            fanController: fanController,
             sensorProvider: StaticThermalSensorProvider(temperatureC: snapshot.temperatureC),
             notice: snapshot.canWriteFanFloors
                 ? .nativeWritable("Using native fan backend.")

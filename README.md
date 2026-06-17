@@ -1,6 +1,6 @@
 # QuietCooling
 
-QuietCooling is a small macOS menu bar app for quiet preventive cooling. It is designed around a fan-floor policy: it may raise the minimum fan RPM inside the user's quiet range, but it must never suppress macOS thermal protection or prevent the system from cooling harder when needed.
+QuietCooling is a small macOS menu bar app for quiet preventive cooling. It may ask the fans to cool more inside the user's quiet range, but it must never suppress macOS thermal protection or prevent the system from cooling harder when needed.
 
 ## Current Status
 
@@ -14,11 +14,11 @@ This repo builds a native SwiftUI menu bar app with:
 - a 2-second controller loop
 - explicit fan/sensor protocols
 - real Apple Silicon temperature telemetry through `macmon` when it is installed
-- a packaged privileged helper and XPC client for real fan telemetry and future fan-floor writes
-- a helper safety contract that rejects any fan writer that is not floor-only
+- a packaged privileged helper and XPC client for real fan telemetry and guarded fan writes
+- a helper safety contract that rejects any writer that cannot return control to macOS maximum cooling
 - a mock hardware backend as fallback for development and UI testing
 
-The app does not claim writable fan control on Apple Silicon unless the helper can prove it can set a minimum fan floor. The helper reads real Apple SMC fan count, min/max, and current RPM, but intentionally reports fan writes unavailable because this Mac exposes writable target/manual keys, not a proven floor-only key. This keeps the safety invariant strict: QuietCooling may cool more, but it must not lower macOS cooling.
+The helper reads real Apple SMC fan count, min/max, and current RPM. On this Mac it can also write the Apple Silicon manual target keys through the privileged helper. The app policy only writes when the target is a meaningful increase over current cooling, never writes hardware-minimum targets, and releases back to macOS at the maximum-cooling threshold.
 
 ## Build, Test, Run
 
@@ -44,19 +44,20 @@ For local root-level XPC dogfood before notarization, copy the app to `/Applicat
 script/install_legacy_daemon.sh install
 ```
 
-The local legacy path does not loosen the fan safety contract; the helper still rejects fan writes unless the backend reports `minimumFloor` semantics.
+The local legacy path does not loosen the fan safety contract; the helper still rejects fan writes unless the backend reports maximum-cooling-safe semantics.
 
 ## Safety Model
 
-QuietCooling computes a minimum fan floor, not a replacement thermal curve.
+QuietCooling computes a quiet pre-cooling target, not a replacement thermal curve.
 
 - Off/System release control back to macOS.
-- Always Quiet applies the quiet ceiling as a minimum RPM floor when supported. It is not a maximum fan cap.
+- Always Quiet may apply the quiet ceiling only when that would cool more than macOS is already doing. It is not a maximum fan cap.
 - Prevent Fan Blast ramps from the hardware minimum toward the quiet ceiling between 45-65°C, holds the quiet ceiling from 65-75°C, and releases control above 75°C.
+- Targets at hardware minimum, targets below current fan speed, and tiny target increases are released back to macOS instead of written.
 - All RPM values are clamped to the reported hardware range.
 - Fanless, restricted, sensor-failure, and unknown-range states are surfaced honestly.
 - Quit releases fan control.
 
 ## Native Backend Work
 
-The production fan write backend still needs a proven floor-only SMC writer behind the helper. See [docs/native-backend.md](docs/native-backend.md).
+The local helper path is wired for this Mac through guarded AppleSMC manual target writes. See [docs/native-backend.md](docs/native-backend.md).
