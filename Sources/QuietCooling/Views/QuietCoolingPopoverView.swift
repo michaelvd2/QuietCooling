@@ -243,14 +243,11 @@ private struct ManualRPMControl: View {
         RPMControlShell(
             label: "Manual target",
             systemImage: "dial.high",
-            valueText: DisplayFormatters.fanRPM(model.manualTargetRPMForControls),
+            value: Double(model.manualTargetRPMForControls),
             range: model.manualRPMRange,
             lowerLabel: "System \(DisplayFormatters.fanRPM(model.rpmControlBaseline))",
             isEnabled: model.canAdjustControls,
-            value: Binding(
-                get: { Double(model.manualTargetRPMForControls) },
-                set: { model.setManualTargetRPM(Int($0)) }
-            )
+            onCommit: { model.setManualTargetRPM(Int($0)) }
         )
     }
 }
@@ -262,20 +259,26 @@ private struct CustomPreCoolingCeilingControl: View {
         RPMControlShell(
             label: "Custom ceiling",
             systemImage: "dial.medium",
-            valueText: DisplayFormatters.fanRPM(model.customPreCoolingCeilingRPMForControls),
+            value: Double(model.customPreCoolingCeilingRPMForControls),
             range: model.customPreCoolingCeilingRange,
             lowerLabel: "Min \(DisplayFormatters.fanRPM(Int(model.customPreCoolingCeilingRange.lowerBound)))",
             isEnabled: model.canAdjustControls,
-            value: Binding(
-                get: { Double(model.customPreCoolingCeilingRPMForControls) },
-                set: { model.setCustomPreCoolingCeilingRPM(Int($0)) }
-            )
+            onCommit: { model.setCustomPreCoolingCeilingRPM(Int($0)) }
         )
     }
 }
 
 private struct TemporaryFanTestControl: View {
     @ObservedObject var model: AppModel
+    @State private var dragBuffer = RPMSliderDragBuffer(value: 0)
+
+    private var externalValue: Double {
+        Double(model.temporaryTestRPMForControls)
+    }
+
+    private var displayedValue: Double {
+        dragBuffer.visibleValue
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -293,7 +296,7 @@ private struct TemporaryFanTestControl: View {
                 Spacer()
 
                 Text(model.isTemporaryFanTestActive
-                    ? DisplayFormatters.fanRPM(model.temporaryTestRPMForControls)
+                    ? DisplayFormatters.fanRPM(Int(displayedValue))
                     : "Off")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
@@ -302,13 +305,31 @@ private struct TemporaryFanTestControl: View {
 
             Slider(
                 value: Binding(
-                    get: { Double(model.temporaryTestRPMForControls) },
-                    set: { model.setTemporaryTestRPM(Int($0)) }
+                    get: { dragBuffer.visibleValue },
+                    set: { newValue in
+                        if !dragBuffer.isEditing {
+                            dragBuffer.beginEditing()
+                        }
+                        dragBuffer.updateDraftValue(newValue)
+                    }
                 ),
                 in: model.temporaryTestRPMRange,
-                step: 50
+                step: 50,
+                onEditingChanged: { isEditing in
+                    if isEditing {
+                        dragBuffer.beginEditing()
+                    } else {
+                        model.setTemporaryTestRPM(Int(dragBuffer.commitEditing()))
+                    }
+                }
             )
             .disabled(!model.canAdjustControls || !model.isTemporaryFanTestActive)
+            .onAppear {
+                dragBuffer.updateExternalValue(externalValue)
+            }
+            .onChange(of: externalValue) { _, newValue in
+                dragBuffer.updateExternalValue(newValue)
+            }
 
             HStack {
                 Text("System \(DisplayFormatters.fanRPM(model.rpmControlBaseline))")
@@ -324,25 +345,70 @@ private struct TemporaryFanTestControl: View {
 private struct RPMControlShell: View {
     var label: String
     var systemImage: String
-    var valueText: String
+    var value: Double
     var range: ClosedRange<Double>
     var lowerLabel: String
     var isEnabled: Bool
-    @Binding var value: Double
+    var onCommit: (Double) -> Void
+    @State private var dragBuffer: RPMSliderDragBuffer
+
+    init(
+        label: String,
+        systemImage: String,
+        value: Double,
+        range: ClosedRange<Double>,
+        lowerLabel: String,
+        isEnabled: Bool,
+        onCommit: @escaping (Double) -> Void
+    ) {
+        self.label = label
+        self.systemImage = systemImage
+        self.value = value
+        self.range = range
+        self.lowerLabel = lowerLabel
+        self.isEnabled = isEnabled
+        self.onCommit = onCommit
+        self._dragBuffer = State(initialValue: RPMSliderDragBuffer(value: value))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label(label, systemImage: systemImage)
                 Spacer()
-                Text(valueText)
+                Text(DisplayFormatters.fanRPM(Int(dragBuffer.visibleValue)))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
             .font(.caption)
 
-            Slider(value: $value, in: range, step: 50)
-                .disabled(!isEnabled)
+            Slider(
+                value: Binding(
+                    get: { dragBuffer.visibleValue },
+                    set: { newValue in
+                        if !dragBuffer.isEditing {
+                            dragBuffer.beginEditing()
+                        }
+                        dragBuffer.updateDraftValue(newValue)
+                    }
+                ),
+                in: range,
+                step: 50,
+                onEditingChanged: { isEditing in
+                    if isEditing {
+                        dragBuffer.beginEditing()
+                    } else {
+                        onCommit(dragBuffer.commitEditing())
+                    }
+                }
+            )
+            .disabled(!isEnabled)
+            .onAppear {
+                dragBuffer.updateExternalValue(value)
+            }
+            .onChange(of: value) { _, newValue in
+                dragBuffer.updateExternalValue(newValue)
+            }
 
             HStack {
                 Text(lowerLabel)
