@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 @MainActor
 final class AppKitVisibilityAnchorController: NSObject {
@@ -6,6 +7,7 @@ final class AppKitVisibilityAnchorController: NSObject {
     private let onOpenControls: @MainActor () -> Void
     private var panel: NSPanel?
     private weak var button: NSButton?
+    private var modelObserver: AnyCancellable?
 
     init(model: AppModel, onOpenControls: @escaping @MainActor () -> Void) {
         self.model = model
@@ -29,16 +31,26 @@ final class AppKitVisibilityAnchorController: NSObject {
         button?.title ?? ""
     }
 
+    var buttonImage: NSImage? {
+        button?.image
+    }
+
+    var buttonToolTip: String? {
+        button?.toolTip
+    }
+
     func show() {
         let anchorPanel = panel ?? makePanel()
         panel = anchorPanel
 
-        updateButtonTitle()
+        installObserverIfNeeded()
+        updateButton()
         position(anchorPanel)
         anchorPanel.orderFrontRegardless()
     }
 
     func close() {
+        modelObserver = nil
         panel?.close()
         panel = nil
         button = nil
@@ -54,23 +66,26 @@ final class AppKitVisibilityAnchorController: NSObject {
 
     private func makePanel() -> NSPanel {
         let anchorPanel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 92, height: 34),
+            contentRect: NSRect(x: 0, y: 0, width: 42, height: 30),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        anchorPanel.level = .statusBar
+        anchorPanel.level = .popUpMenu
         anchorPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         anchorPanel.hidesOnDeactivate = false
         anchorPanel.isReleasedWhenClosed = false
         anchorPanel.isOpaque = false
         anchorPanel.backgroundColor = .clear
-        anchorPanel.hasShadow = true
+        anchorPanel.hasShadow = false
 
-        let button = NSButton(title: anchorTitle(), target: self, action: #selector(openControls(_:)))
-        button.bezelStyle = .rounded
-        button.font = .systemFont(ofSize: 13, weight: .semibold)
-        button.toolTip = "Open QuietCooling"
+        let button = NSButton(frame: NSRect(x: 0, y: 0, width: 42, height: 30))
+        button.target = self
+        button.action = #selector(openControls(_:))
+        button.isBordered = false
+        button.imagePosition = .imageOnly
+        button.title = ""
+        button.toolTip = model.menuBarTooltip
         button.setAccessibilityLabel("Open QuietCooling")
         anchorPanel.contentView = button
         self.button = button
@@ -78,24 +93,37 @@ final class AppKitVisibilityAnchorController: NSObject {
     }
 
     private func position(_ anchorPanel: NSPanel) {
-        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let frame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let size = anchorPanel.frame.size
+        let cropAlignedX = frame.minX + max(0, frame.width - 860)
         let origin = NSPoint(
-            x: visibleFrame.maxX - size.width - 14,
-            y: visibleFrame.maxY - size.height - 12
+            x: min(frame.maxX - size.width - 14, cropAlignedX),
+            y: frame.maxY - size.height
         )
         anchorPanel.setFrameOrigin(origin)
     }
 
-    private func updateButtonTitle() {
-        button?.title = anchorTitle()
+    private func updateButton() {
+        button?.title = ""
+        let image = MenuBarStatusItemImage.make(
+            filledBladeCount: model.menuBarFilledBladeCount,
+            temperatureText: model.menuBarTemperatureBadge
+        )
+        image.isTemplate = false
+        button?.image = image
+        button?.contentTintColor = .black
+        button?.toolTip = model.menuBarTooltip
     }
 
-    private func anchorTitle() -> String {
-        if let temperature = model.menuBarTemperatureBadge {
-            return "QC \(temperature)"
+    private func installObserverIfNeeded() {
+        guard modelObserver == nil else {
+            return
         }
 
-        return "QC"
+        modelObserver = model.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor in
+                self?.updateButton()
+            }
+        }
     }
 }

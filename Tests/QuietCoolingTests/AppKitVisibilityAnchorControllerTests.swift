@@ -11,10 +11,11 @@ final class AppKitVisibilityAnchorControllerTests: XCTestCase {
         defer { controller.close() }
 
         XCTAssertTrue(controller.isVisible)
-        XCTAssertEqual(controller.windowLevel, .statusBar)
+        XCTAssertEqual(controller.windowLevel, .popUpMenu)
         XCTAssertTrue(controller.windowCollectionBehavior.contains(.canJoinAllSpaces))
         XCTAssertTrue(controller.windowCollectionBehavior.contains(.fullScreenAuxiliary))
-        XCTAssertTrue(controller.buttonTitle.hasPrefix("QC"))
+        XCTAssertEqual(controller.buttonTitle, "")
+        XCTAssertNotNil(controller.buttonImage)
     }
 
     func testPressRequestsControlsWindow() {
@@ -26,5 +27,20 @@ final class AppKitVisibilityAnchorControllerTests: XCTestCase {
         controller.pressForTests()
 
         XCTAssertEqual(openCallCount, 1)
+    }
+
+    func testVisibleAnchorRefreshesWhenModelChanges() {
+        let model = AppModel.demo()
+        let controller = AppKitVisibilityAnchorController(model: model, onOpenControls: {})
+
+        controller.show()
+        defer { controller.close() }
+
+        XCTAssertEqual(controller.buttonToolTip, "Fan RPM unavailable")
+
+        model.tick()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(controller.buttonToolTip, model.menuBarTooltip)
     }
 }

@@ -30,6 +30,10 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         statusItem?.button?.title ?? ""
     }
 
+    var statusItemLength: CGFloat {
+        statusItem?.length ?? 0
+    }
+
     var autosaveName: String? {
         statusItem?.autosaveName
     }
@@ -40,8 +44,8 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
             return
         }
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.autosaveName = "QuietCooling.StatusItem"
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        item.autosaveName = "QuietCooling.StatusItem.Compact"
         item.isVisible = true
         statusItem = item
 
@@ -49,7 +53,7 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
             button.target = self
             button.action = #selector(togglePopover(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.imagePosition = .imageLeading
+            button.imagePosition = .imageOnly
             button.setAccessibilityLabel("QuietCooling")
         }
 
@@ -97,18 +101,10 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
             filledBladeCount: model.menuBarFilledBladeCount,
             temperatureText: model.menuBarTemperatureBadge
         )
-        button.title = statusTitle()
+        button.title = ""
         button.toolTip = model.menuBarTooltip
         button.setAccessibilityValue(model.menuBarTooltip)
         statusItem?.isVisible = true
-    }
-
-    private func statusTitle() -> String {
-        if let temperature = model.menuBarTemperatureBadge {
-            return "QC \(temperature)"
-        }
-
-        return "QC"
     }
 
     private func showPopover(relativeTo button: NSStatusBarButton) {
