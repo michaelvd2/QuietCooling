@@ -55,7 +55,7 @@ public final class AppleSMCFanWriter: FanFloorWriting {
     }
 
     public func setMinimumFloor(fanID: String, rpm: Int) throws {
-        throw HelperFanWriterError.unavailable("No proven floor-only fan writer is available.")
+        throw HelperFanWriterError.unavailable("No fan writer has proven macOS can still reach maximum cooling.")
     }
 
     public func releaseFan(fanID: String) throws {}

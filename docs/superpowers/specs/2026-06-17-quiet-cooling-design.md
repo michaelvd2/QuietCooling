@@ -21,7 +21,7 @@ The app is a SwiftPM SwiftUI executable. `AppModel` owns persisted preferences, 
 
 ## Safety
 
-The app never replaces Apple's thermal curve. It applies a minimum RPM floor only when supported, clamps RPMs to hardware min/max, releases on Off/System/quit/hot states, and reports unsupported hardware honestly.
+The app never blocks Apple's maximum-cooling path. It may pre-cool earlier when supported, clamps requested RPMs to hardware min/max, releases on Off/System/quit/hot states, and reports unsupported hardware honestly.
 
 ## MVP Backend
 

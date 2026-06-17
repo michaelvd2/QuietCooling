@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Attach QuietCooling to real Mac hardware where safe and available, while preserving the fan-floor-only safety model.
+**Goal:** Attach QuietCooling to real Mac hardware where safe and available, while preserving the rule that macOS must still be able to reach maximum cooling.
 
 **Architecture:** Keep `CoolingPolicy` pure and treat Always Quiet as a minimum fan floor, never a cap. Add a production hardware factory that prefers a native SMC backend, falls back to real read-only Apple Silicon telemetry where possible, and then to the mock backend only when real hardware cannot be queried.
 

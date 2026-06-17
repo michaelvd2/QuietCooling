@@ -21,7 +21,7 @@ struct QuietCoolingPopoverView: View {
             .pickerStyle(.segmented)
             .disabled(!model.canAdjustControls)
 
-            Text("Raises the fan floor only within your quiet range. macOS can still cool normally when needed.")
+            Text("Pre-cools within your quiet range. macOS can still go full blast when needed.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

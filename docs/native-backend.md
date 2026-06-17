@@ -39,9 +39,9 @@ The app owns a narrow helper API: list fans, report whether fan-floor writes are
 
 Apple's `SMAppService` LaunchDaemon path requires a notarized app bundle. For local development before notarization, the app's Helper > Install path and `script/install_legacy_daemon.sh` can bootstrap the helper through `/Library/LaunchDaemons` with admin approval.
 
-On this Mac, read-only probes found two real SMC fans through `FNum`, `F*Ac`, `F*Mn`, and `F*Mx`. Root same-value write probes show `F*Tg` and `F*Md` are writable, while `F*Mn` and `F*Mx` are not. Because `F*Tg`/`F*Md` are target/manual-control keys rather than proven minimum-floor keys, the helper must continue to report `FanWriteSemantics.unavailable`.
+On this Mac, read-only probes found two real SMC fans through `FNum`, `F*Ac`, `F*Mn`, and `F*Mx`. Root same-value write probes show `F*Tg` and `F*Md` are writable, while `F*Mn` and `F*Mx` are not. Because `F*Tg`/`F*Md` are target/manual-control keys and have not proven that macOS can still reach maximum cooling, the helper must continue to report `FanWriteSemantics.unavailable`.
 
-The remaining backend task is to find or build a writer that can prove `FanWriteSemantics.minimumFloor`. A writer that sets fixed targets, overrides macOS automatic blast behavior, or cannot prove floor-only semantics must stay rejected.
+The remaining backend task is to find or build a writer that can prove `FanWriteSemantics.systemMaximumCoolingSafe`. A writer that pins fixed targets, overrides macOS maximum-cooling behavior, or cannot prove macOS can still go full blast must stay rejected.
 
 ## Floor-Vs-Cap Probe
 
@@ -81,10 +81,10 @@ lowercase mode key, and uppercase `F*Md`. Fan 0 was restored from
 `F0Md=00`, `F0Tg=2317`, `F0Ac=2317`, and `Ftst=00`.
 
 The `F*Md` + `F*Tg` path is a manual target-control path, not a proven
-minimum-floor path. Do not wire it into the production helper as
-`FanWriteSemantics.minimumFloor`. A production writer still needs a separate
-primitive or proof that it can only raise the minimum floor while allowing
-macOS to exceed it under thermal pressure.
+max-cooling-safe path. Do not wire it into the production helper as
+`FanWriteSemantics.systemMaximumCoolingSafe`. A production writer still needs
+proof that macOS can exceed QuietCooling's requested route and reach maximum
+cooling under thermal pressure.
 
 If this target/manual path is deliberately re-tested later, the safety question
 must be treated as unsettled until the risky `floor-vs-cap` behavior is measured
@@ -97,5 +97,5 @@ under the watchdog:
   keys are a fixed cap and must remain rejected by `FanFloorCommandValidator`.
 
 Do not enable production writes from target/manual keys. Only enable writes if a
-separate floor-only primitive is found, or if a future watchdog probe documents
-floor-only behavior for the exact `hw.model` and macOS build.
+future watchdog probe documents maximum-cooling-safe behavior for the exact
+`hw.model` and macOS build.

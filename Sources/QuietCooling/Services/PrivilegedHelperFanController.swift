@@ -92,7 +92,7 @@ final class PrivilegedHelperFanController: FanControllerProtocol {
         let result = FanFloorCommandValidator.validate(
             .setMinimumFloor(fanID: fanID, rpm: rpm),
             fans: helperFans,
-            writerSemantics: .minimumFloor
+            writerSemantics: .systemMaximumCoolingSafe
         )
 
         switch result {

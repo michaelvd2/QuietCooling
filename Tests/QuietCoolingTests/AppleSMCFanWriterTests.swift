@@ -37,7 +37,7 @@ final class AppleSMCFanWriterTests: XCTestCase {
         XCTAssertEqual(try writer.readFanRPM(fanID: "fan-0"), 2_330)
     }
 
-    func testRejectsWritesUntilAFloorOnlySMCKeyIsProven() throws {
+    func testRejectsWritesUntilMaximumCoolingSafetyIsProven() throws {
         let writer = AppleSMCFanWriter(reader: RecordingSMCKeyReader(
             rawValues: ["FNum": [1]],
             numericValues: ["F0Mn": 2_317, "F0Mx": 7_826, "F0Ac": 2_330]

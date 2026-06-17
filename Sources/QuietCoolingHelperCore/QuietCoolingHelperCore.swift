@@ -101,10 +101,10 @@ extension QuietCoolingHelperService: QuietCoolingHelperXPCProtocol {
     }
 
     public func canWriteFanFloors(withReply reply: @escaping (Bool, NSString?) -> Void) {
-        if writer.writeSemantics == .minimumFloor {
+        if writer.writeSemantics == .systemMaximumCoolingSafe {
             reply(true, nil)
         } else {
-            reply(false, "No proven floor-only fan writer is available." as NSString)
+            reply(false, "No fan writer has proven macOS can still reach maximum cooling." as NSString)
         }
     }
 
@@ -156,7 +156,7 @@ public final class NoProvenFloorFanWriter: FanFloorWriting {
     }
 
     public func setMinimumFloor(fanID: String, rpm: Int) throws {
-        throw HelperFanWriterError.unavailable("No proven floor-only fan writer is available.")
+        throw HelperFanWriterError.unavailable("No fan writer has proven macOS can still reach maximum cooling.")
     }
 
     public func readFanRPM(fanID: String) throws -> Int {

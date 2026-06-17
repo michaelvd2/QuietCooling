@@ -9,7 +9,7 @@ final class FanFloorCommandValidatorTests: XCTestCase {
         maximumRPM: 6_200
     )
 
-    func testSetMinimumFloorRequiresFloorOnlyBackend() {
+    func testSetMinimumFloorRequiresSystemMaximumCoolingSafeBackend() {
         let result = FanFloorCommandValidator.validate(
             .setMinimumFloor(fanID: "fan-0", rpm: 2_200),
             fans: [fan],
@@ -18,7 +18,7 @@ final class FanFloorCommandValidatorTests: XCTestCase {
 
         XCTAssertEqual(
             result,
-            .rejected("Fan writer is not floor-only; refusing to override macOS cooling.")
+            .rejected("Fan writer has not proven macOS can still reach maximum cooling.")
         )
     }
 
@@ -26,12 +26,12 @@ final class FanFloorCommandValidatorTests: XCTestCase {
         let belowMinimum = FanFloorCommandValidator.validate(
             .setMinimumFloor(fanID: "fan-0", rpm: 400),
             fans: [fan],
-            writerSemantics: .minimumFloor
+            writerSemantics: .systemMaximumCoolingSafe
         )
         let aboveMaximum = FanFloorCommandValidator.validate(
             .setMinimumFloor(fanID: "fan-0", rpm: 9_000),
             fans: [fan],
-            writerSemantics: .minimumFloor
+            writerSemantics: .systemMaximumCoolingSafe
         )
 
         XCTAssertEqual(
@@ -58,7 +58,7 @@ final class FanFloorCommandValidatorTests: XCTestCase {
         let result = FanFloorCommandValidator.validate(
             .setMinimumFloor(fanID: "missing", rpm: 2_200),
             fans: [fan],
-            writerSemantics: .minimumFloor
+            writerSemantics: .systemMaximumCoolingSafe
         )
 
         XCTAssertEqual(result, .rejected("Unknown fan: missing"))

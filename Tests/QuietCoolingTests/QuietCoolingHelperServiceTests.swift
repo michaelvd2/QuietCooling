@@ -3,7 +3,7 @@ import XCTest
 import QuietCoolingShared
 
 final class QuietCoolingHelperServiceTests: XCTestCase {
-    func testSetMinimumRPMRejectsWriterThatIsNotFloorOnly() {
+    func testSetMinimumRPMRejectsWriterThatHasNotProvenMaximumCoolingSafety() {
         let writer = RecordingFanFloorWriter(semantics: .fixedTarget)
         let service = QuietCoolingHelperService(writer: writer)
 
@@ -11,12 +11,12 @@ final class QuietCoolingHelperServiceTests: XCTestCase {
 
         XCTAssertFalse(reply.success)
         XCTAssertEqual(reply.appliedRPM, 0)
-        XCTAssertEqual(reply.message, "Fan writer is not floor-only; refusing to override macOS cooling.")
+        XCTAssertEqual(reply.message, "Fan writer has not proven macOS can still reach maximum cooling.")
         XCTAssertEqual(writer.commands, [])
     }
 
-    func testSetMinimumRPMClampsAndWritesFloorWhenBackendIsFloorOnly() {
-        let writer = RecordingFanFloorWriter(semantics: .minimumFloor)
+    func testSetMinimumRPMClampsAndWritesFloorWhenBackendPreservesMaximumCooling() {
+        let writer = RecordingFanFloorWriter(semantics: .systemMaximumCoolingSafe)
         let service = QuietCoolingHelperService(writer: writer)
 
         let reply = service.setMinimumRPMForTesting(9_000, fanID: "fan-0")

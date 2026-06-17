@@ -39,7 +39,7 @@ public enum QuietCoolingHelperConstants {
 }
 
 public enum FanWriteSemantics: Equatable, Sendable {
-    case minimumFloor
+    case systemMaximumCoolingSafe
     case fixedTarget
     case unavailable
 }
@@ -63,8 +63,8 @@ public enum FanFloorCommandValidator {
     ) -> HelperCommandValidationResult {
         switch command {
         case .setMinimumFloor(let fanID, let rpm):
-            guard writerSemantics == .minimumFloor else {
-                return .rejected("Fan writer is not floor-only; refusing to override macOS cooling.")
+            guard writerSemantics == .systemMaximumCoolingSafe else {
+                return .rejected("Fan writer has not proven macOS can still reach maximum cooling.")
             }
 
             guard let fan = fans.first(where: { $0.id == fanID }) else {
