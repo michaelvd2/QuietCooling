@@ -9,7 +9,8 @@ let package = Package(
     ],
     products: [
         .library(name: "QuietCoolingShared", targets: ["QuietCoolingShared"]),
-        .executable(name: "QuietCooling", targets: ["QuietCooling"])
+        .executable(name: "QuietCooling", targets: ["QuietCooling"]),
+        .executable(name: "QuietCoolingHelper", targets: ["QuietCoolingHelper"])
     ],
     targets: [
         .target(
@@ -21,9 +22,19 @@ let package = Package(
             dependencies: ["QuietCoolingShared"],
             path: "Sources/QuietCooling"
         ),
+        .target(
+            name: "QuietCoolingHelperCore",
+            dependencies: ["QuietCoolingShared"],
+            path: "Sources/QuietCoolingHelperCore"
+        ),
+        .executableTarget(
+            name: "QuietCoolingHelper",
+            dependencies: ["QuietCoolingHelperCore"],
+            path: "Sources/QuietCoolingHelper"
+        ),
         .testTarget(
             name: "QuietCoolingTests",
-            dependencies: ["QuietCooling", "QuietCoolingShared"],
+            dependencies: ["QuietCooling", "QuietCoolingHelperCore", "QuietCoolingShared"],
             path: "Tests/QuietCoolingTests"
         )
     ]

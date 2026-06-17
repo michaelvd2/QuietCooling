@@ -12,6 +12,29 @@ public struct HelperFan: Codable, Equatable, Sendable {
         self.minimumRPM = minimumRPM
         self.maximumRPM = maximumRPM
     }
+
+    public var propertyListRepresentation: NSDictionary {
+        [
+            "id": id,
+            "name": name,
+            "minimumRPM": minimumRPM,
+            "maximumRPM": maximumRPM
+        ]
+    }
+}
+
+public enum QuietCoolingHelperConstants {
+    public static let label = "com.mvandijk.QuietCooling.Helper"
+    public static let plistName = "\(label).plist"
+    public static let machServiceName = label
+}
+
+@objc public protocol QuietCoolingHelperXPCProtocol {
+    func listFans(withReply reply: @escaping (NSArray, NSString?) -> Void)
+    func canWriteFanFloors(withReply reply: @escaping (Bool, NSString?) -> Void)
+    func setMinimumRPM(_ rpm: Int32, forFanID fanID: NSString, withReply reply: @escaping (Bool, Int32, NSString?) -> Void)
+    func releaseFan(_ fanID: NSString, withReply reply: @escaping (Bool, NSString?) -> Void)
+    func releaseAllFans(withReply reply: @escaping (Bool, NSString?) -> Void)
 }
 
 public enum FanWriteSemantics: Equatable, Sendable {
