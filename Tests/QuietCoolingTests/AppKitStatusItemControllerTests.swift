@@ -13,6 +13,7 @@ final class AppKitStatusItemControllerTests: XCTestCase {
         XCTAssertTrue(controller.isInstalled)
         XCTAssertNotNil(controller.buttonImage)
         XCTAssertTrue(controller.buttonTitle.hasPrefix("QC"))
+        XCTAssertEqual(controller.autosaveName, "QuietCooling.StatusItem")
         XCTAssertEqual(controller.tooltip, model.menuBarTooltip)
     }
 }

@@ -82,6 +82,11 @@ struct QuietCoolingPopoverView: View {
             }
             .accessibilityLabel("Settings")
 
+            Button("Close") {
+                model.closeControls()
+            }
+            .accessibilityLabel("Close controls")
+
             Button("Quit", role: .destructive) {
                 model.quit()
             }

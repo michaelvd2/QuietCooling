@@ -64,6 +64,7 @@ final class AppModel: ObservableObject {
     private let sensorProvider: ThermalSensorProviderProtocol
     private let loginItemManager: LoginItemManaging
     private let helperServiceManager: HelperServiceManaging
+    private let closeControlsAction: @MainActor () -> Void
     private let mockSensorProvider: MockThermalSensorProvider?
     private var timer: Timer?
     private var lastAppliedTargetRPM: Int?
@@ -75,6 +76,7 @@ final class AppModel: ObservableObject {
         sensorProvider: ThermalSensorProviderProtocol,
         loginItemManager: LoginItemManaging = LoginItemManager(),
         helperServiceManager: HelperServiceManaging = HelperServiceManager(),
+        closeControlsAction: @escaping @MainActor () -> Void = { QuietCoolingRuntime.shared.closeControlsWindow() },
         hardwareNotice: String? = nil
     ) {
         let preferences = preferencesStore.load()
@@ -83,6 +85,7 @@ final class AppModel: ObservableObject {
         self.sensorProvider = sensorProvider
         self.loginItemManager = loginItemManager
         self.helperServiceManager = helperServiceManager
+        self.closeControlsAction = closeControlsAction
         self.mockSensorProvider = sensorProvider as? MockThermalSensorProvider
         self.selectedMode = preferences.selectedMode
         self.quietCeilingRPM = preferences.quietCeilingRPM
@@ -215,9 +218,11 @@ final class AppModel: ObservableObject {
     }
 
     func quit() {
-        AppTerminationGate.allowsTermination = true
-        stopAndRelease()
         NSApplication.shared.terminate(nil)
+    }
+
+    func closeControls() {
+        closeControlsAction()
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

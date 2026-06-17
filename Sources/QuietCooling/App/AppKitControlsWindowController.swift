@@ -23,6 +23,14 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         window?.frame.size ?? .zero
     }
 
+    var windowLevel: NSWindow.Level {
+        window?.level ?? .normal
+    }
+
+    var windowCollectionBehavior: NSWindow.CollectionBehavior {
+        window?.collectionBehavior ?? []
+    }
+
     func show() {
         let controlsWindow = window ?? makeWindow()
         window = controlsWindow
@@ -32,7 +40,13 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         }
 
         controlsWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        controlsWindow.orderFrontRegardless()
+        activateApp()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.window?.orderFrontRegardless()
+            self?.activateApp()
+        }
     }
 
     func close() {
@@ -64,10 +78,16 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         controlsWindow.title = "QuietCooling"
         controlsWindow.contentViewController = hostingController
         controlsWindow.isReleasedWhenClosed = false
-        controlsWindow.collectionBehavior = [.moveToActiveSpace]
+        controlsWindow.level = .floating
+        controlsWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         controlsWindow.delegate = self
         controlsWindow.contentMinSize = NSSize(width: 360, height: 500)
         controlsWindow.setContentSize(NSSize(width: 380, height: 540))
         return controlsWindow
+    }
+
+    private func activateApp() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }

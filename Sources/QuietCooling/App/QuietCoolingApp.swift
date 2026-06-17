@@ -4,11 +4,6 @@ import QuietCoolingShared
 import SwiftUI
 
 @MainActor
-enum AppTerminationGate {
-    static var allowsTermination = false
-}
-
-@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let automaticTerminationReason = "QuietCooling menu bar controller"
 
@@ -31,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        AppTerminationGate.allowsTermination ? .terminateNow : .terminateCancel
+        .terminateNow
     }
 }
 
@@ -57,6 +52,10 @@ final class QuietCoolingRuntime {
 
     func showControlsWindow() {
         controlsWindowController?.show()
+    }
+
+    func closeControlsWindow() {
+        controlsWindowController?.close()
     }
 
     func stop() {

@@ -30,6 +30,10 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         statusItem?.button?.title ?? ""
     }
 
+    var autosaveName: String? {
+        statusItem?.autosaveName
+    }
+
     func install() {
         guard statusItem == nil else {
             updateStatusItem()
@@ -37,6 +41,7 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         }
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.autosaveName = "QuietCooling.StatusItem"
         item.isVisible = true
         statusItem = item
 

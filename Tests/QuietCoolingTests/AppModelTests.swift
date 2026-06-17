@@ -117,6 +117,26 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCloseControlsInvokesInjectedCloseAction() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        var closeCallCount = 0
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment),
+            closeControlsAction: {
+                closeCallCount += 1
+            }
+        )
+
+        model.closeControls()
+
+        XCTAssertEqual(closeCallCount, 1)
+    }
+
+    @MainActor
     private func makeRestrictedModel(
         preferencesStore: PreferencesStore,
         helperServiceManager: HelperServiceManaging = NoOpHelperServiceManager()
