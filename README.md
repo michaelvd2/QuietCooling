@@ -38,13 +38,13 @@ The staged bundle embeds `Contents/Library/LaunchDaemons/com.mvandijk.QuietCooli
 dist/QuietCooling.app/Contents/MacOS/QuietCooling --diagnose-helper
 ```
 
-For local root-level XPC dogfood before notarization, copy the app to `/Applications/QuietCooling.app` and run:
+For local root-level XPC dogfood before notarization, copy the app to `/Applications/QuietCooling.app` and use Settings > Helper > Install. The app falls back to a legacy `/Library/LaunchDaemons` install with admin approval when the embedded notarized `SMAppService` path is unavailable. The same flow can be run from the shell:
 
 ```bash
 script/install_legacy_daemon.sh install
 ```
 
-That script installs a legacy `/Library/LaunchDaemons` plist with admin approval. It does not loosen the fan safety contract; the helper still rejects fan writes unless the backend reports `minimumFloor` semantics.
+The local legacy path does not loosen the fan safety contract; the helper still rejects fan writes unless the backend reports `minimumFloor` semantics.
 
 ## Safety Model
 
