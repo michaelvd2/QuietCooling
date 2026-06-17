@@ -30,7 +30,16 @@ let package = Package(
         .executableTarget(
             name: "QuietCoolingHelper",
             dependencies: ["QuietCoolingHelperCore"],
-            path: "Sources/QuietCoolingHelper"
+            path: "Sources/QuietCoolingHelper",
+            exclude: ["Info.plist"],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/QuietCoolingHelper/Info.plist"
+                ])
+            ]
         ),
         .testTarget(
             name: "QuietCoolingTests",

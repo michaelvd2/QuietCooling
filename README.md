@@ -14,10 +14,11 @@ This repo builds a native SwiftUI menu bar app with:
 - a 2-second controller loop
 - explicit fan/sensor protocols
 - real Apple Silicon temperature telemetry through `macmon` when it is installed
-- a safe read-only fan backend that disables controls when fan writes require a helper
+- a packaged privileged helper and XPC client for fan-floor writes
+- a helper safety contract that rejects any fan writer that is not floor-only
 - a mock hardware backend as fallback for development and UI testing
 
-The MVP does not claim writable fan control on Apple Silicon unless the backend can actually set a minimum fan floor. On this M4 Pro, fan write access appears to require a privileged QuietCooling helper, so the app shows real temperatures but disables fan controls instead of pretending to control physical fans.
+The app does not claim writable fan control on Apple Silicon unless the helper can prove it can set a minimum fan floor. The current helper intentionally reports fan writes unavailable because no proven floor-only SMC writer is connected yet. This keeps the safety invariant strict: QuietCooling may cool more, but it must not lower macOS cooling.
 
 ## Build, Test, Run
 
@@ -28,6 +29,22 @@ swift test
 ```
 
 The run script stages `dist/QuietCooling.app` and launches it as a menu-bar-only app.
+
+## Helper Dogfood
+
+The staged bundle embeds `Contents/Library/LaunchDaemons/com.mvandijk.QuietCooling.Helper.plist` and `Contents/MacOS/QuietCoolingHelper`. Apple requires apps containing LaunchDaemons to be notarized before `SMAppService.daemon(plistName:)` can register them. On an unnotarized local Developer ID build, the diagnostic reports:
+
+```bash
+dist/QuietCooling.app/Contents/MacOS/QuietCooling --diagnose-helper
+```
+
+For local root-level XPC dogfood before notarization, copy the app to `/Applications/QuietCooling.app` and run:
+
+```bash
+script/install_legacy_daemon.sh install
+```
+
+That script installs a legacy `/Library/LaunchDaemons` plist with admin approval. It does not loosen the fan safety contract; the helper still rejects fan writes unless the backend reports `minimumFloor` semantics.
 
 ## Safety Model
 
@@ -42,4 +59,4 @@ QuietCooling computes a minimum fan floor, not a replacement thermal curve.
 
 ## Native Backend Work
 
-The production fan write backend still needs a privileged/native helper. See [docs/native-backend.md](docs/native-backend.md).
+The production fan write backend still needs a proven floor-only SMC writer behind the helper. See [docs/native-backend.md](docs/native-backend.md).

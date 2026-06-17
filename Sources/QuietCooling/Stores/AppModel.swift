@@ -1,8 +1,11 @@
 import AppKit
 import Foundation
+import OSLog
 
 @MainActor
 final class AppModel: ObservableObject {
+    private static let logger = Logger(subsystem: "com.mvandijk.QuietCooling", category: "AppModel")
+
     @Published var selectedMode: CoolingMode {
         didSet {
             let supportedMode = Self.supportedMode(
@@ -84,6 +87,7 @@ final class AppModel: ObservableObject {
         self.menuBarDisplayMode = preferences.menuBarDisplayMode
         self.showModeIndicator = preferences.showModeIndicator
         self.helperInstallStatus = helperServiceManager.status()
+        Self.logger.info("Helper status init: \(self.helperInstallStatus.displayText, privacy: .public)")
 
         if let hardwareNotice {
             self.hardwareNotice = hardwareNotice
@@ -198,16 +202,19 @@ final class AppModel: ObservableObject {
 
     func refreshHelperInstallStatus() {
         helperInstallStatus = helperServiceManager.status()
+        Self.logger.info("Helper status refresh: \(self.helperInstallStatus.displayText, privacy: .public)")
     }
 
     func installHelper() {
         do {
             try helperServiceManager.register()
             helperInstallStatus = helperServiceManager.status()
+            Self.logger.info("Helper status install: \(self.helperInstallStatus.displayText, privacy: .public)")
             lastErrorMessage = nil
         } catch {
             let message = error.localizedDescription
             helperInstallStatus = .failed(message)
+            Self.logger.error("Helper install failed: \(message, privacy: .public)")
             lastErrorMessage = "Helper could not be installed: \(message)"
         }
     }
@@ -216,10 +223,12 @@ final class AppModel: ObservableObject {
         do {
             try helperServiceManager.unregister()
             helperInstallStatus = helperServiceManager.status()
+            Self.logger.info("Helper status uninstall: \(self.helperInstallStatus.displayText, privacy: .public)")
             lastErrorMessage = nil
         } catch {
             let message = error.localizedDescription
             helperInstallStatus = .failed(message)
+            Self.logger.error("Helper uninstall failed: \(message, privacy: .public)")
             lastErrorMessage = "Helper could not be removed: \(message)"
         }
     }
