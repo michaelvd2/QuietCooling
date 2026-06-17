@@ -69,7 +69,7 @@ enum HardwareBackendFactory {
                 fanController: fanController,
                 sensorProvider: MacMonSensorProvider(),
                 notice: .nativeReadOnly(
-                    "Using real Apple Silicon temperature telemetry. Fan control requires a QuietCooling helper."
+                    "Using real Apple Silicon temperature and helper fan telemetry. Fan floor writes require a proven floor-only SMC key."
                 )
             )
         }

@@ -8,6 +8,7 @@ struct HelperFanWriteCapability: Equatable {
 
 protocol HelperFanControlClient {
     func listFans() throws -> [HelperFan]
+    func readFanRPM(fanID: String) throws -> Int
     func canWriteFanFloors() throws -> HelperFanWriteCapability
     func setMinimumRPM(_ rpm: Int, forFanID fanID: String) throws -> Int
     func releaseFan(_ fanID: String) throws
@@ -54,6 +55,14 @@ final class PrivilegedHelperFanController: FanControllerProtocol {
     func readFanRPM(fanID: Fan.ID) throws -> Int {
         guard (try listFans()).contains(where: { $0.id == fanID }) else {
             throw HardwareAccessError.fanNotFound(fanID)
+        }
+
+        do {
+            return try client.readFanRPM(fanID: fanID)
+        } catch {
+            if fallbackRPMByFanID[fanID] == nil {
+                throw error
+            }
         }
 
         guard let rpm = fallbackRPMByFanID[fanID] else {
@@ -148,6 +157,18 @@ final class XPCFanControlClient: HelperFanControlClient {
                     return HelperFan(propertyList: dictionary)
                 }
                 finish(.success(parsedFans))
+            }
+        }
+    }
+
+    func readFanRPM(fanID: String) throws -> Int {
+        try withProxy { proxy, finish in
+            proxy.readFanRPM(fanID as NSString) { success, rpm, message in
+                if success {
+                    finish(.success(Int(rpm)))
+                } else {
+                    finish(.failure(HelperFanControlClientError.helperRejected(message as String? ?? "Helper rejected fan RPM read.")))
+                }
             }
         }
     }

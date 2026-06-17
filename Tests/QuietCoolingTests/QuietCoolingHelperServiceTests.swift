@@ -37,11 +37,23 @@ final class QuietCoolingHelperServiceTests: XCTestCase {
         XCTAssertNil(reply.message)
         XCTAssertEqual(writer.commands, [.release(fanID: "fan-0")])
     }
+
+    func testReadsFanRPMFromWriter() {
+        let writer = RecordingFanFloorWriter(semantics: .unavailable, currentRPM: 2_330)
+        let service = QuietCoolingHelperService(writer: writer)
+
+        let reply = service.readFanRPMForTesting("fan-0")
+
+        XCTAssertTrue(reply.success)
+        XCTAssertEqual(reply.appliedRPM, 2_330)
+        XCTAssertNil(reply.message)
+    }
 }
 
 private final class RecordingFanFloorWriter: FanFloorWriting {
     var writeSemantics: FanWriteSemantics
     var commands: [HelperFanCommand] = []
+    var currentRPM: Int
 
     private let fan = HelperFan(
         id: "fan-0",
@@ -50,12 +62,20 @@ private final class RecordingFanFloorWriter: FanFloorWriting {
         maximumRPM: 6_200
     )
 
-    init(semantics: FanWriteSemantics) {
+    init(semantics: FanWriteSemantics, currentRPM: Int = 2_100) {
         self.writeSemantics = semantics
+        self.currentRPM = currentRPM
     }
 
     func listFans() throws -> [HelperFan] {
         [fan]
+    }
+
+    func readFanRPM(fanID: String) throws -> Int {
+        guard fanID == fan.id else {
+            throw HelperFanWriterError.unavailable("Unknown fan: \(fanID)")
+        }
+        return currentRPM
     }
 
     func setMinimumFloor(fanID: String, rpm: Int) throws {

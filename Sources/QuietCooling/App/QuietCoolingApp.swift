@@ -58,6 +58,11 @@ private enum HelperDiagnostics {
         do {
             let fans = try controller.listFans()
             print("helper.fans=\(fans.count)")
+            for fan in fans {
+                if let rpm = try? controller.readFanRPM(fanID: fan.id) {
+                    print("helper.fan.\(fan.id).rpm=\(rpm)")
+                }
+            }
         } catch {
             print("helper.fans.error=\(error.localizedDescription)")
         }

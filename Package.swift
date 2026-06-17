@@ -25,7 +25,10 @@ let package = Package(
         .target(
             name: "QuietCoolingHelperCore",
             dependencies: ["QuietCoolingShared"],
-            path: "Sources/QuietCoolingHelperCore"
+            path: "Sources/QuietCoolingHelperCore",
+            linkerSettings: [
+                .linkedLibrary("SMC")
+            ]
         ),
         .executableTarget(
             name: "QuietCoolingHelper",

@@ -36,11 +36,25 @@ final class PrivilegedHelperFanControllerTests: XCTestCase {
 
         XCTAssertEqual(client.commands, [.release(fanID: "fan-0")])
     }
+
+    func testReadsRPMFromHelperBeforeUsingFallbackTelemetry() throws {
+        let client = RecordingHelperFanControlClient(
+            capability: HelperFanWriteCapability(canWrite: false, reason: nil),
+            currentRPM: 2_330
+        )
+        let controller = PrivilegedHelperFanController(
+            client: client,
+            fallbackRPMByFanID: ["fan-0": 1_900]
+        )
+
+        XCTAssertEqual(try controller.readFanRPM(fanID: "fan-0"), 2_330)
+    }
 }
 
 private final class RecordingHelperFanControlClient: HelperFanControlClient {
     var capability: HelperFanWriteCapability
     var commands: [HelperFanCommand] = []
+    var currentRPM: Int
 
     private let fan = HelperFan(
         id: "fan-0",
@@ -49,12 +63,20 @@ private final class RecordingHelperFanControlClient: HelperFanControlClient {
         maximumRPM: 6_200
     )
 
-    init(capability: HelperFanWriteCapability) {
+    init(capability: HelperFanWriteCapability, currentRPM: Int = 2_100) {
         self.capability = capability
+        self.currentRPM = currentRPM
     }
 
     func listFans() throws -> [HelperFan] {
         [fan]
+    }
+
+    func readFanRPM(fanID: String) throws -> Int {
+        guard fanID == fan.id else {
+            throw HardwareAccessError.fanNotFound(fanID)
+        }
+        return currentRPM
     }
 
     func canWriteFanFloors() throws -> HelperFanWriteCapability {

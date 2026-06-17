@@ -14,11 +14,11 @@ This repo builds a native SwiftUI menu bar app with:
 - a 2-second controller loop
 - explicit fan/sensor protocols
 - real Apple Silicon temperature telemetry through `macmon` when it is installed
-- a packaged privileged helper and XPC client for fan-floor writes
+- a packaged privileged helper and XPC client for real fan telemetry and future fan-floor writes
 - a helper safety contract that rejects any fan writer that is not floor-only
 - a mock hardware backend as fallback for development and UI testing
 
-The app does not claim writable fan control on Apple Silicon unless the helper can prove it can set a minimum fan floor. The current helper intentionally reports fan writes unavailable because no proven floor-only SMC writer is connected yet. This keeps the safety invariant strict: QuietCooling may cool more, but it must not lower macOS cooling.
+The app does not claim writable fan control on Apple Silicon unless the helper can prove it can set a minimum fan floor. The helper reads real Apple SMC fan count, min/max, and current RPM, but intentionally reports fan writes unavailable because this Mac exposes writable target/manual keys, not a proven floor-only key. This keeps the safety invariant strict: QuietCooling may cool more, but it must not lower macOS cooling.
 
 ## Build, Test, Run
 

@@ -6,6 +6,7 @@ public protocol FanFloorWriting: AnyObject {
     var writeSemantics: FanWriteSemantics { get }
 
     func listFans() throws -> [HelperFan]
+    func readFanRPM(fanID: String) throws -> Int
     func setMinimumFloor(fanID: String, rpm: Int) throws
     func releaseFan(fanID: String) throws
     func releaseAllFans() throws
@@ -69,6 +70,19 @@ public final class QuietCoolingHelperService: NSObject {
             return HelperServiceReply(success: false, appliedRPM: 0, message: error.localizedDescription)
         }
     }
+
+    func readFanRPMForTesting(_ fanID: String) -> HelperServiceReply {
+        do {
+            guard try writer.listFans().contains(where: { $0.id == fanID }) else {
+                return HelperServiceReply(success: false, appliedRPM: 0, message: "Unknown fan: \(fanID)")
+            }
+
+            let rpm = try writer.readFanRPM(fanID: fanID)
+            return HelperServiceReply(success: true, appliedRPM: rpm, message: nil)
+        } catch {
+            return HelperServiceReply(success: false, appliedRPM: 0, message: error.localizedDescription)
+        }
+    }
 }
 
 extension QuietCoolingHelperService: QuietCoolingHelperXPCProtocol {
@@ -79,6 +93,11 @@ extension QuietCoolingHelperService: QuietCoolingHelperXPCProtocol {
         } catch {
             reply([], error.localizedDescription as NSString)
         }
+    }
+
+    public func readFanRPM(_ fanID: NSString, withReply reply: @escaping (Bool, Int32, NSString?) -> Void) {
+        let result = readFanRPMForTesting(fanID as String)
+        reply(result.success, Int32(result.appliedRPM), result.message as NSString?)
     }
 
     public func canWriteFanFloors(withReply reply: @escaping (Bool, NSString?) -> Void) {
@@ -138,6 +157,10 @@ public final class NoProvenFloorFanWriter: FanFloorWriting {
 
     public func setMinimumFloor(fanID: String, rpm: Int) throws {
         throw HelperFanWriterError.unavailable("No proven floor-only fan writer is available.")
+    }
+
+    public func readFanRPM(fanID: String) throws -> Int {
+        throw HelperFanWriterError.unavailable("Fan RPM is unavailable without SMC telemetry.")
     }
 
     public func releaseFan(fanID: String) throws {}

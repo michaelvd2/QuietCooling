@@ -31,6 +31,7 @@ public enum QuietCoolingHelperConstants {
 
 @objc public protocol QuietCoolingHelperXPCProtocol {
     func listFans(withReply reply: @escaping (NSArray, NSString?) -> Void)
+    func readFanRPM(_ fanID: NSString, withReply reply: @escaping (Bool, Int32, NSString?) -> Void)
     func canWriteFanFloors(withReply reply: @escaping (Bool, NSString?) -> Void)
     func setMinimumRPM(_ rpm: Int32, forFanID fanID: NSString, withReply reply: @escaping (Bool, Int32, NSString?) -> Void)
     func releaseFan(_ fanID: NSString, withReply reply: @escaping (Bool, NSString?) -> Void)
