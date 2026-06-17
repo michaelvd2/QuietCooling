@@ -23,6 +23,10 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         window?.frame.size ?? .zero
     }
 
+    var windowFrame: NSRect {
+        window?.frame ?? .zero
+    }
+
     var windowLevel: NSWindow.Level {
         window?.level ?? .normal
     }
@@ -31,11 +35,13 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         window?.collectionBehavior ?? []
     }
 
-    func show() {
+    func show(relativeTo anchorFrame: NSRect? = nil) {
         let controlsWindow = window ?? makeWindow()
         window = controlsWindow
 
-        if !controlsWindow.isVisible {
+        if let anchorFrame {
+            position(controlsWindow, relativeTo: anchorFrame)
+        } else if !controlsWindow.isVisible {
             controlsWindow.center()
         }
 
@@ -84,6 +90,21 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         controlsWindow.contentMinSize = NSSize(width: 360, height: 500)
         controlsWindow.setContentSize(NSSize(width: 380, height: 540))
         return controlsWindow
+    }
+
+    private func position(_ controlsWindow: NSWindow, relativeTo anchorFrame: NSRect) {
+        let screen = NSScreen.screens.first { $0.frame.intersects(anchorFrame) } ?? NSScreen.main
+        let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let size = controlsWindow.frame.size
+        let margin: CGFloat = 8
+
+        let proposedX = anchorFrame.maxX - size.width
+        let proposedY = anchorFrame.minY - size.height - margin
+        let origin = NSPoint(
+            x: min(max(proposedX, visibleFrame.minX + margin), visibleFrame.maxX - size.width - margin),
+            y: min(max(proposedY, visibleFrame.minY + margin), visibleFrame.maxY - size.height - margin)
+        )
+        controlsWindow.setFrameOrigin(origin)
     }
 
     private func activateApp() {

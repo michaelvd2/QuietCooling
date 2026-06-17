@@ -56,7 +56,7 @@ final class QuietCoolingRuntime {
     }
 
     func showControlsWindow() {
-        controlsWindowController?.show()
+        controlsWindowController?.show(relativeTo: visibilityAnchorController?.panelFrame)
     }
 
     func closeControlsWindow() {

@@ -44,6 +44,10 @@ final class AppKitVisibilityAnchorController: NSObject {
         panel?.frame.size ?? .zero
     }
 
+    var panelFrame: NSRect? {
+        panel?.frame
+    }
+
     var buttonHasContrastBackground: Bool {
         button?.layer?.backgroundColor != nil
     }

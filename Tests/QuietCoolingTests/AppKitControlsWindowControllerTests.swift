@@ -27,4 +27,16 @@ final class AppKitControlsWindowControllerTests: XCTestCase {
         XCTAssertTrue(controller.windowCollectionBehavior.contains(.canJoinAllSpaces))
         XCTAssertTrue(controller.windowCollectionBehavior.contains(.fullScreenAuxiliary))
     }
+
+    func testShowPositionsControlsBelowMenuBarAnchor() {
+        let model = AppModel.demo()
+        let controller = AppKitControlsWindowController(model: model)
+        let anchorFrame = NSRect(x: 1_400, y: 1_100, width: 58, height: 32)
+
+        controller.show(relativeTo: anchorFrame)
+        defer { controller.close() }
+
+        XCTAssertEqual(controller.windowFrame.maxY, anchorFrame.minY - 8, accuracy: 1)
+        XCTAssertEqual(controller.windowFrame.maxX, anchorFrame.maxX, accuracy: 1)
+    }
 }
