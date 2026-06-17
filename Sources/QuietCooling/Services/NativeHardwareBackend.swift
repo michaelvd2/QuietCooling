@@ -60,11 +60,10 @@ enum HardwareBackendFactory {
         let nativeSnapshot = AppleSiliconNativeHardwareProbe().snapshot()
 
         if MacMonSensorProvider.isAvailable {
-            let fanController = ReadOnlyFanController(
-                backendName: "Native SMC",
-                fans: nativeSnapshot.fans,
-                currentRPMByFanID: nativeSnapshot.rpmByFanID,
-                limitationReason: nativeSnapshot.limitationReason
+            let fanController = PrivilegedHelperFanController(
+                fallbackFans: nativeSnapshot.fans,
+                fallbackRPMByFanID: nativeSnapshot.rpmByFanID,
+                fallbackLimitationReason: nativeSnapshot.limitationReason
             )
             return HardwareBackend(
                 fanController: fanController,
@@ -96,11 +95,10 @@ enum HardwareBackendFactory {
         }
 
         return HardwareBackend(
-            fanController: ReadOnlyFanController(
-                backendName: "Native SMC",
-                fans: snapshot.fans,
-                currentRPMByFanID: snapshot.rpmByFanID,
-                limitationReason: snapshot.limitationReason
+            fanController: PrivilegedHelperFanController(
+                fallbackFans: snapshot.fans,
+                fallbackRPMByFanID: snapshot.rpmByFanID,
+                fallbackLimitationReason: snapshot.limitationReason
             ),
             sensorProvider: StaticThermalSensorProvider(temperatureC: snapshot.temperatureC),
             notice: snapshot.canWriteFanFloors

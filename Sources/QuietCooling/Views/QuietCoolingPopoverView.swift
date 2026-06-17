@@ -128,6 +128,7 @@ private struct StatusPanel: View {
             MetricRow(label: "Fan", value: DisplayFormatters.fanRPM(model.fanRPM), systemImage: "fan")
             MetricRow(label: "Temp", value: DisplayFormatters.temperature(model.temperatureC), systemImage: "thermometer.medium")
             MetricRow(label: "Status", value: model.status.displayText, systemImage: "waveform.path.ecg")
+            MetricRow(label: "Helper", value: model.helperInstallStatus.displayText, systemImage: "lock.shield")
 
             if let hardwareNotice = model.hardwareNotice {
                 Label(hardwareNotice, systemImage: "info.circle")
@@ -235,6 +236,8 @@ private struct SettingsPanel: View {
             Toggle("Show mode indicator in menu bar", isOn: $model.showModeIndicator)
                 .toggleStyle(.checkbox)
 
+            HelperControls(model: model)
+
             HStack {
                 Label("Sensor", systemImage: "sensor")
                     .foregroundStyle(.secondary)
@@ -254,5 +257,45 @@ private struct SettingsPanel: View {
             }
         }
         .font(.caption)
+    }
+}
+
+private struct HelperControls: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Helper", systemImage: "lock.shield")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(model.helperInstallStatus.displayText)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    model.installHelper()
+                } label: {
+                    Label("Install", systemImage: "plus.circle")
+                }
+
+                Button {
+                    model.refreshHelperInstallStatus()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+
+                Spacer()
+
+                Button(role: .destructive) {
+                    model.uninstallHelper()
+                } label: {
+                    Label("Remove", systemImage: "trash")
+                }
+            }
+        }
     }
 }

@@ -46,12 +46,14 @@ final class AppModel: ObservableObject {
     @Published private(set) var status: CoolingStatus = .followingMacOS
     @Published private(set) var hardwareNotice: String?
     @Published private(set) var lastErrorMessage: String?
+    @Published private(set) var helperInstallStatus: HelperInstallStatus = .notRegistered
     @Published var showingSettings = false
 
     private let preferencesStore: PreferencesStore
     private let fanController: FanControllerProtocol
     private let sensorProvider: ThermalSensorProviderProtocol
     private let loginItemManager: LoginItemManaging
+    private let helperServiceManager: HelperServiceManaging
     private let mockSensorProvider: MockThermalSensorProvider?
     private var timer: Timer?
 
@@ -60,6 +62,7 @@ final class AppModel: ObservableObject {
         fanController: FanControllerProtocol,
         sensorProvider: ThermalSensorProviderProtocol,
         loginItemManager: LoginItemManaging = LoginItemManager(),
+        helperServiceManager: HelperServiceManaging = HelperServiceManager(),
         hardwareNotice: String? = nil
     ) {
         let preferences = preferencesStore.load()
@@ -72,6 +75,7 @@ final class AppModel: ObservableObject {
         self.fanController = fanController
         self.sensorProvider = sensorProvider
         self.loginItemManager = loginItemManager
+        self.helperServiceManager = helperServiceManager
         self.mockSensorProvider = sensorProvider as? MockThermalSensorProvider
         self.selectedMode = initialSelectedMode
         self.quietCeilingRPM = preferences.quietCeilingRPM
@@ -79,6 +83,7 @@ final class AppModel: ObservableObject {
         self.launchAtLogin = preferences.launchAtLogin
         self.menuBarDisplayMode = preferences.menuBarDisplayMode
         self.showModeIndicator = preferences.showModeIndicator
+        self.helperInstallStatus = helperServiceManager.status()
 
         if let hardwareNotice {
             self.hardwareNotice = hardwareNotice
@@ -94,13 +99,15 @@ final class AppModel: ObservableObject {
     convenience init(
         preferencesStore: PreferencesStore = PreferencesStore(),
         hardwareBackend: HardwareBackend,
-        loginItemManager: LoginItemManaging = LoginItemManager()
+        loginItemManager: LoginItemManaging = LoginItemManager(),
+        helperServiceManager: HelperServiceManaging = HelperServiceManager()
     ) {
         self.init(
             preferencesStore: preferencesStore,
             fanController: hardwareBackend.fanController,
             sensorProvider: hardwareBackend.sensorProvider,
             loginItemManager: loginItemManager,
+            helperServiceManager: helperServiceManager,
             hardwareNotice: hardwareBackend.notice.displayText
         )
     }
@@ -186,6 +193,34 @@ final class AppModel: ObservableObject {
             launchAtLogin = false
             lastErrorMessage = "Launch at login could not be changed: \(error.localizedDescription)"
             persistPreferences()
+        }
+    }
+
+    func refreshHelperInstallStatus() {
+        helperInstallStatus = helperServiceManager.status()
+    }
+
+    func installHelper() {
+        do {
+            try helperServiceManager.register()
+            helperInstallStatus = helperServiceManager.status()
+            lastErrorMessage = nil
+        } catch {
+            let message = error.localizedDescription
+            helperInstallStatus = .failed(message)
+            lastErrorMessage = "Helper could not be installed: \(message)"
+        }
+    }
+
+    func uninstallHelper() {
+        do {
+            try helperServiceManager.unregister()
+            helperInstallStatus = helperServiceManager.status()
+            lastErrorMessage = nil
+        } catch {
+            let message = error.localizedDescription
+            helperInstallStatus = .failed(message)
+            lastErrorMessage = "Helper could not be removed: \(message)"
         }
     }
 
