@@ -105,10 +105,9 @@ final class AppKitVisibilityAnchorController: NSObject {
         button.title = ""
         button.toolTip = model.menuBarTooltip
         button.wantsLayer = true
-        button.layer?.cornerRadius = 8
-        button.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.56).cgColor
-        button.layer?.borderColor = NSColor.black.withAlphaComponent(0.08).cgColor
-        button.layer?.borderWidth = 0.5
+        button.layer?.backgroundColor = nil
+        button.layer?.borderColor = nil
+        button.layer?.borderWidth = 0
         button.setAccessibilityLabel("Open QuietCooling")
         anchorPanel.contentView = button
         self.button = button
