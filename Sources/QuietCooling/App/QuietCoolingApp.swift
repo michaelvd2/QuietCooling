@@ -3,9 +3,28 @@ import Darwin
 import QuietCoolingShared
 import SwiftUI
 
+@MainActor
+enum AppTerminationGate {
+    static var allowsTermination = false
+}
+
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let automaticTerminationReason = "QuietCooling menu bar controller"
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        ProcessInfo.processInfo.disableAutomaticTermination(automaticTerminationReason)
+        ProcessInfo.processInfo.disableSuddenTermination()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        ProcessInfo.processInfo.enableSuddenTermination()
+        ProcessInfo.processInfo.enableAutomaticTermination(automaticTerminationReason)
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        AppTerminationGate.allowsTermination ? .terminateNow : .terminateCancel
     }
 }
 

@@ -5,6 +5,7 @@ enum CoolingMode: String, CaseIterable, Codable, Identifiable {
     case system
     case alwaysQuiet
     case preventFanBlast
+    case manual
 
     var id: String { rawValue }
 
@@ -18,11 +19,15 @@ enum CoolingMode: String, CaseIterable, Codable, Identifiable {
             "Always Quiet"
         case .preventFanBlast:
             "Prevent Fan Blast"
+        case .manual:
+            "Manual"
         }
     }
 
     var selectorTitle: String {
         switch self {
+        case .alwaysQuiet:
+            "Quiet"
         case .preventFanBlast:
             "Prevent"
         default:
@@ -40,6 +45,8 @@ enum CoolingMode: String, CaseIterable, Codable, Identifiable {
             "Q"
         case .preventFanBlast:
             "P"
+        case .manual:
+            "M"
         }
     }
 }

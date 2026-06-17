@@ -32,6 +32,10 @@ extension CoolingStatus {
             "Always Quiet"
         case .preCooling(let boostRPM):
             boostRPM > 0 ? "Pre-cooling +\(boostRPM) RPM" : "Pre-cooling"
+        case .manual(let targetRPM):
+            "Manual \(DisplayFormatters.fanRPM(targetRPM))"
+        case .temporaryTest(let targetRPM):
+            "Testing \(DisplayFormatters.fanRPM(targetRPM))"
         case .limitedByThisMac(let reason):
             reason.isEmpty ? "Limited by this Mac" : reason
         case .fanControlUnavailable(let reason):
@@ -47,7 +51,7 @@ extension CoolingStatus {
         switch self {
         case .limitedByThisMac, .fanControlUnavailable, .noFansDetected, .sensorUnavailable:
             true
-        case .off, .followingMacOS, .alwaysQuiet, .preCooling:
+        case .off, .followingMacOS, .alwaysQuiet, .preCooling, .manual, .temporaryTest:
             false
         }
     }

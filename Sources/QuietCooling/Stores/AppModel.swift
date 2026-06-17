@@ -20,6 +20,27 @@ final class AppModel: ObservableObject {
         }
     }
 
+    @Published private(set) var manualTargetRPM: Int {
+        didSet {
+            persistPreferences()
+            tick()
+        }
+    }
+
+    @Published private(set) var temporaryTestRPM: Int {
+        didSet {
+            if isTemporaryFanTestActive {
+                tick()
+            }
+        }
+    }
+
+    @Published private(set) var isTemporaryFanTestActive = false {
+        didSet {
+            tick()
+        }
+    }
+
     @Published var preCoolingStrength: PreCoolingStrength {
         didSet {
             persistPreferences()
@@ -45,6 +66,8 @@ final class AppModel: ObservableObject {
     private let helperServiceManager: HelperServiceManaging
     private let mockSensorProvider: MockThermalSensorProvider?
     private var timer: Timer?
+    private var lastAppliedTargetRPM: Int?
+    private var observedSystemBaselineRPM: Int?
 
     init(
         preferencesStore: PreferencesStore = PreferencesStore(),
@@ -63,6 +86,8 @@ final class AppModel: ObservableObject {
         self.mockSensorProvider = sensorProvider as? MockThermalSensorProvider
         self.selectedMode = preferences.selectedMode
         self.quietCeilingRPM = preferences.quietCeilingRPM
+        self.manualTargetRPM = preferences.manualTargetRPM
+        self.temporaryTestRPM = max(preferences.manualTargetRPM, 3_200)
         self.preCoolingStrength = preferences.preCoolingStrength
         self.launchAtLogin = preferences.launchAtLogin
         self.helperInstallStatus = helperServiceManager.status()
@@ -123,6 +148,27 @@ final class AppModel: ObservableObject {
         return Double(range.minimumRPM)...Double(min(range.maximumRPM, 3_000))
     }
 
+    var rpmControlBaseline: Int {
+        let range = fans.first?.range ?? FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
+        return range.clamped(observedSystemBaselineRPM ?? fanRPM ?? range.minimumRPM)
+    }
+
+    var manualRPMRange: ClosedRange<Double> {
+        rpmControlRange()
+    }
+
+    var temporaryTestRPMRange: ClosedRange<Double> {
+        rpmControlRange()
+    }
+
+    var manualTargetRPMForControls: Int {
+        clampedControlRPM(manualTargetRPM)
+    }
+
+    var temporaryTestRPMForControls: Int {
+        clampedControlRPM(temporaryTestRPM)
+    }
+
     var canAdjustControls: Bool {
         !fans.isEmpty && fanController.canControlFans()
     }
@@ -133,6 +179,18 @@ final class AppModel: ObservableObject {
 
     func setSelectedMode(_ mode: CoolingMode) {
         selectedMode = mode
+    }
+
+    func setManualTargetRPM(_ rpm: Int) {
+        manualTargetRPM = clampedControlRPM(rpm)
+    }
+
+    func setTemporaryTestRPM(_ rpm: Int) {
+        temporaryTestRPM = clampedControlRPM(rpm)
+    }
+
+    func setTemporaryFanTestActive(_ active: Bool) {
+        isTemporaryFanTestActive = active
     }
 
     func start() {
@@ -152,10 +210,12 @@ final class AppModel: ObservableObject {
         timer?.invalidate()
         timer = nil
         fanController.releaseAllFans()
+        lastAppliedTargetRPM = nil
         (sensorProvider as? HardwareBackendStoppable)?.stop()
     }
 
     func quit() {
+        AppTerminationGate.allowsTermination = true
         stopAndRelease()
         NSApplication.shared.terminate(nil)
     }
@@ -210,6 +270,9 @@ final class AppModel: ObservableObject {
         let defaults = UserPreferences.defaults
         selectedMode = defaults.selectedMode
         quietCeilingRPM = defaults.quietCeilingRPM
+        manualTargetRPM = defaults.manualTargetRPM
+        temporaryTestRPM = max(defaults.manualTargetRPM, 3_200)
+        isTemporaryFanTestActive = false
         preCoolingStrength = defaults.preCoolingStrength
         launchAtLogin = defaults.launchAtLogin
         preferencesStore.save(defaults)
@@ -232,6 +295,7 @@ final class AppModel: ObservableObject {
         let currentRPM = primaryFan.flatMap { try? fanController.readFanRPM(fanID: $0.id) }
         let fanRange = primaryFan.flatMap { try? fanController.readFanMinMax(fanID: $0.id) }
         fanRPM = currentRPM
+        updateObservedSystemBaseline(currentRPM: currentRPM)
         temperatureC = try? sensorProvider.readHottestRelevantTemperature()
 
         let decision = CoolingPolicy.decide(
@@ -244,7 +308,11 @@ final class AppModel: ObservableObject {
                 strength: preCoolingStrength,
                 hasFans: !fans.isEmpty,
                 canControlFans: fanController.canControlFans(),
-                limitationReason: fanController.controlLimitationReason()
+                limitationReason: fanController.controlLimitationReason(),
+                manualTargetRPM: manualTargetRPMForControls,
+                temporaryTestTargetRPM: isTemporaryFanTestActive ? temporaryTestRPMForControls : nil,
+                previousTargetRPM: lastAppliedTargetRPM,
+                systemBaselineRPM: observedSystemBaselineRPM
             )
         )
 
@@ -258,11 +326,13 @@ final class AppModel: ObservableObject {
                 for fan in fans {
                     try fanController.releaseFanControl(fanID: fan.id)
                 }
+                lastAppliedTargetRPM = nil
             case .setMinimumRPM(let rpm):
                 for fan in fans {
                     let range = try fanController.readFanMinMax(fanID: fan.id)
                     try fanController.setFanMinimumRPM(fanID: fan.id, rpm: range.clamped(rpm))
                 }
+                lastAppliedTargetRPM = rpm
             }
 
             status = decision.status
@@ -282,11 +352,40 @@ final class AppModel: ObservableObject {
             UserPreferences(
                 selectedMode: selectedMode,
                 quietCeilingRPM: quietCeilingRPM,
+                manualTargetRPM: manualTargetRPM,
                 preCoolingStrength: preCoolingStrength,
                 launchAtLogin: launchAtLogin,
                 selectedSensorID: nil
             )
         )
+    }
+
+    private func rpmControlRange() -> ClosedRange<Double> {
+        let range = fans.first?.range ?? FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
+        let lowerBound = min(rpmControlBaseline, range.maximumRPM)
+        return Double(lowerBound)...Double(range.maximumRPM)
+    }
+
+    private func clampedControlRPM(_ rpm: Int) -> Int {
+        let range = fans.first?.range ?? FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
+        let baseline = min(rpmControlBaseline, range.maximumRPM)
+        let roundedRPM = Int((Double(rpm) / 50).rounded() * 50)
+        return min(max(roundedRPM, baseline), range.maximumRPM)
+    }
+
+    private func updateObservedSystemBaseline(currentRPM: Int?) {
+        guard let currentRPM else {
+            return
+        }
+
+        guard let lastAppliedTargetRPM else {
+            observedSystemBaselineRPM = currentRPM
+            return
+        }
+
+        if currentRPM >= lastAppliedTargetRPM + CoolingPolicyConfiguration.defaults.minimumManualBoostRPM {
+            observedSystemBaselineRPM = currentRPM
+        }
     }
 
 }

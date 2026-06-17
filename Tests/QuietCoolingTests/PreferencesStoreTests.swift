@@ -8,6 +8,7 @@ final class PreferencesStoreTests: XCTestCase {
         let preferences = UserPreferences(
             selectedMode: .alwaysQuiet,
             quietCeilingRPM: 2_450,
+            manualTargetRPM: 3_250,
             preCoolingStrength: .strong,
             launchAtLogin: true,
             selectedSensorID: "soc-die"
@@ -28,6 +29,7 @@ final class PreferencesStoreTests: XCTestCase {
 
         XCTAssertEqual(preferences.selectedMode, .preventFanBlast)
         XCTAssertEqual(preferences.quietCeilingRPM, 2_200)
+        XCTAssertEqual(preferences.manualTargetRPM, 2_800)
         XCTAssertEqual(preferences.preCoolingStrength, .medium)
     }
 
@@ -38,6 +40,7 @@ final class PreferencesStoreTests: XCTestCase {
             UserPreferences(
                 selectedMode: .alwaysQuiet,
                 quietCeilingRPM: 2_800,
+                manualTargetRPM: 3_400,
                 preCoolingStrength: .strong,
                 launchAtLogin: true,
                 selectedSensorID: "gpu"

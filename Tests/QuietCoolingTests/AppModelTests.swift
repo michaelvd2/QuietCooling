@@ -18,6 +18,7 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.status, .fanControlUnavailable("Native backend not connected"))
         XCTAssertTrue(model.canSelectMode(.alwaysQuiet))
         XCTAssertTrue(model.canSelectMode(.preventFanBlast))
+        XCTAssertTrue(model.canSelectMode(.manual))
     }
 
     @MainActor
@@ -73,6 +74,46 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.helperInstallStatus, .failed("The operation couldn’t be completed. (QuietCoolingTests error 7.)"))
         XCTAssertEqual(model.selectedMode, .alwaysQuiet)
         XCTAssertEqual(model.status, .fanControlUnavailable("Native backend not connected"))
+    }
+
+    @MainActor
+    func testManualTargetPersistsWhenChanged() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.setManualTargetRPM(3_350)
+
+        XCTAssertEqual(model.manualTargetRPM, 3_350)
+        XCTAssertEqual(fixture.store.load().manualTargetRPM, 3_350)
+    }
+
+    @MainActor
+    func testTemporaryFanTestOverridesModeWithoutPersisting() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.setSelectedMode(.system)
+        model.setTemporaryFanTestActive(true)
+        model.setTemporaryTestRPM(3_600)
+
+        XCTAssertEqual(model.status, .temporaryTest(targetRPM: 3_600))
+        XCTAssertEqual(fixture.store.load().manualTargetRPM, UserPreferences.defaults.manualTargetRPM)
+
+        model.setTemporaryFanTestActive(false)
+
+        XCTAssertEqual(model.status, .followingMacOS)
     }
 
     @MainActor

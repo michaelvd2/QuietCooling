@@ -6,8 +6,10 @@ QuietCooling is a small macOS menu bar app for quiet preventive cooling. It may 
 
 This repo builds a native SwiftUI menu bar app with:
 
-- Off, System, Always Quiet, and Prevent Fan Blast modes
+- Off, System, Always Quiet, Prevent Fan Blast, and Manual modes
 - quiet ceiling RPM control
+- manual target RPM control
+- always-visible temporary fan test control
 - pre-cooling strength control
 - compact menu bar fan/temperature badge with live RPM tooltip
 - persisted settings
@@ -53,7 +55,9 @@ QuietCooling computes a quiet pre-cooling target, not a replacement thermal curv
 - Off/System release control back to macOS.
 - Always Quiet may apply the quiet ceiling only when that would cool more than macOS is already doing. It is not a maximum fan cap.
 - Prevent Fan Blast ramps from the hardware minimum toward the quiet ceiling between 45-65°C, holds the quiet ceiling from 65-75°C, and releases control above 75°C.
-- Targets at hardware minimum, targets below current fan speed, and tiny target increases are released back to macOS instead of written.
+- Manual mode can hold a user-selected higher RPM target, with the slider lower bound based on the last observed macOS baseline.
+- The temporary fan test slider can override any mode while enabled, but it is not persisted.
+- Targets at hardware minimum, targets below observed macOS cooling, and tiny target increases are released back to macOS instead of written.
 - All RPM values are clamped to the reported hardware range.
 - Fanless, restricted, sensor-failure, and unknown-range states are surfaced honestly.
 - Quit releases fan control.

@@ -11,20 +11,26 @@ struct QuietCoolingPopoverView: View {
 
             ModeSelector(model: model)
 
-            QuietCeilingControl(model: model)
+            if model.selectedMode == .manual {
+                ManualRPMControl(model: model)
+            } else {
+                QuietCeilingControl(model: model)
 
-            Picker("Pre-cooling strength", selection: $model.preCoolingStrength) {
-                ForEach(PreCoolingStrength.allCases) { strength in
-                    Text(strength.title).tag(strength)
+                Picker("Pre-cooling strength", selection: $model.preCoolingStrength) {
+                    ForEach(PreCoolingStrength.allCases) { strength in
+                        Text(strength.title).tag(strength)
+                    }
                 }
-            }
-            .pickerStyle(.segmented)
-            .disabled(!model.canAdjustControls)
+                .pickerStyle(.segmented)
+                .disabled(!model.canAdjustControls)
 
-            Text("Pre-cools within your quiet range. macOS can still go full blast when needed.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                Text("Pre-cools within your quiet range. macOS can still go full blast when needed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            TemporaryFanTestControl(model: model)
 
             if model.showingSettings {
                 Divider()
@@ -212,6 +218,106 @@ private struct QuietCeilingControl: View {
                 Text(DisplayFormatters.fanRPM(Int(model.quietCeilingRange.lowerBound)))
                 Spacer()
                 Text(DisplayFormatters.fanRPM(Int(model.quietCeilingRange.upperBound)))
+            }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private struct ManualRPMControl: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        RPMControlShell(
+            label: "Manual target",
+            systemImage: "dial.high",
+            valueText: DisplayFormatters.fanRPM(model.manualTargetRPMForControls),
+            range: model.manualRPMRange,
+            lowerLabel: "System \(DisplayFormatters.fanRPM(model.rpmControlBaseline))",
+            isEnabled: model.canAdjustControls,
+            value: Binding(
+                get: { Double(model.manualTargetRPMForControls) },
+                set: { model.setManualTargetRPM(Int($0)) }
+            )
+        )
+    }
+}
+
+private struct TemporaryFanTestControl: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Toggle(
+                    "Test fan RPM",
+                    isOn: Binding(
+                        get: { model.isTemporaryFanTestActive },
+                        set: { model.setTemporaryFanTestActive($0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+                .disabled(!model.canAdjustControls)
+
+                Spacer()
+
+                Text(model.isTemporaryFanTestActive
+                    ? DisplayFormatters.fanRPM(model.temporaryTestRPMForControls)
+                    : "Off")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+
+            Slider(
+                value: Binding(
+                    get: { Double(model.temporaryTestRPMForControls) },
+                    set: { model.setTemporaryTestRPM(Int($0)) }
+                ),
+                in: model.temporaryTestRPMRange,
+                step: 50
+            )
+            .disabled(!model.canAdjustControls || !model.isTemporaryFanTestActive)
+
+            HStack {
+                Text("System \(DisplayFormatters.fanRPM(model.rpmControlBaseline))")
+                Spacer()
+                Text(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.upperBound)))
+            }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private struct RPMControlShell: View {
+    var label: String
+    var systemImage: String
+    var valueText: String
+    var range: ClosedRange<Double>
+    var lowerLabel: String
+    var isEnabled: Bool
+    @Binding var value: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(label, systemImage: systemImage)
+                Spacer()
+                Text(valueText)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+
+            Slider(value: $value, in: range, step: 50)
+                .disabled(!isEnabled)
+
+            HStack {
+                Text(lowerLabel)
+                Spacer()
+                Text(DisplayFormatters.fanRPM(Int(range.upperBound)))
             }
             .font(.caption2)
             .foregroundStyle(.tertiary)

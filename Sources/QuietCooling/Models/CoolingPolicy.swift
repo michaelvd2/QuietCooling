@@ -10,6 +10,10 @@ struct CoolingInputs: Equatable {
     var hasFans: Bool
     var canControlFans: Bool
     var limitationReason: String?
+    var manualTargetRPM: Int = 2_800
+    var temporaryTestTargetRPM: Int? = nil
+    var previousTargetRPM: Int? = nil
+    var systemBaselineRPM: Int? = nil
 }
 
 struct CoolingPolicyConfiguration: Equatable {
@@ -36,6 +40,8 @@ enum CoolingStatus: Equatable {
     case followingMacOS
     case alwaysQuiet
     case preCooling(boostRPM: Int)
+    case manual(targetRPM: Int)
+    case temporaryTest(targetRPM: Int)
     case limitedByThisMac(String)
     case fanControlUnavailable(String)
     case noFansDetected
@@ -57,11 +63,11 @@ enum CoolingPolicy {
             return CoolingDecision(command: .release, status: .noFansDetected, targetRPM: nil)
         }
 
-        if inputs.mode == .off {
+        if inputs.mode == .off, inputs.temporaryTestTargetRPM == nil {
             return CoolingDecision(command: .release, status: .off, targetRPM: nil)
         }
 
-        if inputs.mode == .system {
+        if inputs.mode == .system, inputs.temporaryTestTargetRPM == nil {
             return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
         }
 
@@ -76,35 +82,69 @@ enum CoolingPolicy {
 
         let quietCeiling = fanRange.clamped(inputs.quietCeilingRPM)
 
-        func shouldReleaseInsteadOfWriting(targetRPM: Int) -> Bool {
-            guard targetRPM > fanRange.minimumRPM else {
+        func observedSystemBaseline() -> Int {
+            fanRange.clamped(inputs.systemBaselineRPM ?? inputs.currentRPM ?? fanRange.minimumRPM)
+        }
+
+        func currentRPMCanBeAttributedToQuietCoolingFloor(targetRPM: Int) -> Bool {
+            guard let currentRPM = inputs.currentRPM,
+                  let previousTargetRPM = inputs.previousTargetRPM
+            else {
+                return false
+            }
+
+            let tolerance = configuration.minimumManualBoostRPM
+            if abs(currentRPM - previousTargetRPM) <= tolerance {
                 return true
             }
 
-            if let currentRPM = inputs.currentRPM {
-                return targetRPM < currentRPM + configuration.minimumManualBoostRPM
+            if targetRPM < previousTargetRPM, currentRPM <= previousTargetRPM + tolerance {
+                return true
             }
 
             return false
+        }
+
+        func guardedFloorDecision(targetRPM requestedTargetRPM: Int, status: CoolingStatus) -> CoolingDecision {
+            if let temperatureC = inputs.temperatureC,
+               temperatureC >= configuration.systemReleaseThresholdC {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
+            }
+
+            let targetRPM = fanRange.clamped(requestedTargetRPM)
+            let baselineRPM = observedSystemBaseline()
+            guard targetRPM >= baselineRPM + configuration.minimumManualBoostRPM else {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
+            }
+
+            if let currentRPM = inputs.currentRPM,
+               !currentRPMCanBeAttributedToQuietCoolingFloor(targetRPM: targetRPM),
+               targetRPM < currentRPM + configuration.minimumManualBoostRPM {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
+            }
+
+            return CoolingDecision(
+                command: .setMinimumRPM(targetRPM),
+                status: status,
+                targetRPM: targetRPM
+            )
+        }
+
+        if let temporaryTestTargetRPM = inputs.temporaryTestTargetRPM {
+            let targetRPM = fanRange.clamped(temporaryTestTargetRPM)
+            return guardedFloorDecision(
+                targetRPM: targetRPM,
+                status: .temporaryTest(targetRPM: targetRPM)
+            )
         }
 
         switch inputs.mode {
         case .off, .system:
             return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
         case .alwaysQuiet:
-            if let temperatureC = inputs.temperatureC,
-               temperatureC >= configuration.systemReleaseThresholdC {
-                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
-            }
-
-            if shouldReleaseInsteadOfWriting(targetRPM: quietCeiling) {
-                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
-            }
-
-            return CoolingDecision(
-                command: .setMinimumRPM(quietCeiling),
-                status: .alwaysQuiet,
-                targetRPM: quietCeiling
+            return guardedFloorDecision(
+                targetRPM: quietCeiling,
+                status: .alwaysQuiet
             )
         case .preventFanBlast:
             guard let temperatureC = inputs.temperatureC else {
@@ -131,15 +171,16 @@ enum CoolingPolicy {
                 target = fanRange.clamped(Int(rpm.rounded()))
             }
 
-            if shouldReleaseInsteadOfWriting(targetRPM: target) {
-                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
-            }
-
-            let boostRPM = max(0, target - (inputs.currentRPM ?? target))
-            return CoolingDecision(
-                command: .setMinimumRPM(target),
-                status: .preCooling(boostRPM: boostRPM),
-                targetRPM: target
+            let boostRPM = max(0, target - (inputs.systemBaselineRPM ?? inputs.currentRPM ?? target))
+            return guardedFloorDecision(
+                targetRPM: target,
+                status: .preCooling(boostRPM: boostRPM)
+            )
+        case .manual:
+            let targetRPM = fanRange.clamped(inputs.manualTargetRPM)
+            return guardedFloorDecision(
+                targetRPM: targetRPM,
+                status: .manual(targetRPM: targetRPM)
             )
         }
     }
