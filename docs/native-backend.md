@@ -52,13 +52,14 @@ as an unsafe fixed cap. It is intentionally not wired into the production helper
 Build and run read-only diagnostics:
 
 ```bash
-swiftc script/smc_floor_probe.swift -lSMC -o /tmp/smc_floor_probe
+swiftc script/smc_floor_probe.swift -framework IOKit -lSMC -o /tmp/smc_floor_probe
 /tmp/smc_floor_probe diagnose 0
 ```
 
 On this Mac, normal-user reads work and report fan 0 keys such as `F0Ac`,
-`F0Mn`, `F0Mx`, `F0Md`, and `F0Tg`. Normal-user writes fail with `-7`, so the
-same-value and forced-target probes require admin/root execution:
+`F0Mn`, `F0Mx`, `F0Md`, and `F0Tg`. Normal-user writes fail with `-7`, so any
+write probe requires admin/root execution. These commands are for deliberate
+diagnostics only, not normal app operation:
 
 ```bash
 sudo /tmp/smc_floor_probe same-value 0
@@ -66,7 +67,28 @@ sudo /tmp/smc_floor_probe idle-floor 0 20 82
 sudo /tmp/smc_floor_probe floor-vs-cap 0 45 88
 ```
 
-Only the `floor-vs-cap` result can settle the safety question:
+Recovery to macOS automatic control is explicit:
+
+```bash
+sudo /tmp/smc_floor_probe restore-auto 0
+sudo /tmp/smc_floor_probe restore-auto 1
+```
+
+2026-06-17 live probe on this Mac (`hw.model=Mac16,8`, `hw.targettype=J614s`,
+macOS 26.5) found that direct AppleSMC diagnostics expose `Ftst=00`, no
+lowercase mode key, and uppercase `F*Md`. Fan 0 was restored from
+`F0Md=01` to `F0Md=00` with `restore-auto 0`; final readbacks were
+`F0Md=00`, `F0Tg=2317`, `F0Ac=2317`, and `Ftst=00`.
+
+The `F*Md` + `F*Tg` path is a manual target-control path, not a proven
+minimum-floor path. Do not wire it into the production helper as
+`FanWriteSemantics.minimumFloor`. A production writer still needs a separate
+primitive or proof that it can only raise the minimum floor while allowing
+macOS to exceed it under thermal pressure.
+
+If this target/manual path is deliberately re-tested later, the safety question
+must be treated as unsettled until the risky `floor-vs-cap` behavior is measured
+under the watchdog:
 
 - If current RPM rises well above the forced low target under sustained load,
   the firmware is effectively treating `F*Md` + `F*Tg` as a floor on this model
@@ -74,5 +96,6 @@ Only the `floor-vs-cap` result can settle the safety question:
 - If current RPM stays pinned near the target while die temperature climbs, the
   keys are a fixed cap and must remain rejected by `FanFloorCommandValidator`.
 
-Do not enable production writes until this probe has been run under a thermal
-watchdog and the result is documented for the exact `hw.model` and macOS build.
+Do not enable production writes from target/manual keys. Only enable writes if a
+separate floor-only primitive is found, or if a future watchdog probe documents
+floor-only behavior for the exact `hw.model` and macOS build.
