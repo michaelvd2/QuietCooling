@@ -37,16 +37,21 @@ final class QuietCoolingRuntime {
     private var model: AppModel?
     private var statusItemController: AppKitStatusItemController?
     private var controlsWindowController: AppKitControlsWindowController?
+    private var visibilityAnchorController: AppKitVisibilityAnchorController?
 
     func configure(model: AppModel) {
         self.model = model
         self.statusItemController = AppKitStatusItemController(model: model)
         self.controlsWindowController = AppKitControlsWindowController(model: model)
+        self.visibilityAnchorController = AppKitVisibilityAnchorController(model: model) { [weak self] in
+            self?.showControlsWindow()
+        }
     }
 
     func start() {
         model?.start()
         statusItemController?.install()
+        visibilityAnchorController?.show()
         showControlsWindow()
     }
 
@@ -61,6 +66,7 @@ final class QuietCoolingRuntime {
     func stop() {
         statusItemController?.remove()
         controlsWindowController?.close()
+        visibilityAnchorController?.close()
         model?.stopAndRelease()
     }
 }
