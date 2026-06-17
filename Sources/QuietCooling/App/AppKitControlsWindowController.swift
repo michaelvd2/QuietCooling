@@ -5,6 +5,7 @@ import SwiftUI
 final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
     private let model: AppModel
     private var window: NSWindow?
+    private var appDeactivationObserver: NSObjectProtocol?
 
     init(model: AppModel) {
         self.model = model
@@ -47,6 +48,7 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
 
         controlsWindow.makeKeyAndOrderFront(nil)
         controlsWindow.orderFrontRegardless()
+        installAppDeactivationObserver()
         activateApp()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
@@ -56,6 +58,7 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
     }
 
     func close() {
+        removeAppDeactivationObserver()
         window?.delegate = nil
         window?.close()
         window = nil
@@ -110,5 +113,28 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
     private func activateApp() {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func installAppDeactivationObserver() {
+        guard appDeactivationObserver == nil else {
+            return
+        }
+
+        appDeactivationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: NSApp,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.close()
+            }
+        }
+    }
+
+    private func removeAppDeactivationObserver() {
+        if let appDeactivationObserver {
+            NotificationCenter.default.removeObserver(appDeactivationObserver)
+        }
+        appDeactivationObserver = nil
     }
 }
