@@ -134,6 +134,13 @@ final class AppModel: ObservableObject {
         )
     }
 
+    var menuBarFilledBladeCount: Int {
+        MenuBarFanStrength.filledBladeCount(
+            currentRPM: fanRPM,
+            range: fans.first?.range
+        )
+    }
+
     var quietCeilingRange: ClosedRange<Double> {
         guard let range = fans.first?.range else {
             return 1_200...3_000

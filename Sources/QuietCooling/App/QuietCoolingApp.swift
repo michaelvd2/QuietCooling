@@ -34,10 +34,12 @@ struct QuietCoolingApp: App {
                     model.stopAndRelease()
                 }
         } label: {
-            if let menuBarTitle = model.menuBarTitle {
-                Label(menuBarTitle, systemImage: "fan")
-            } else {
-                Image(systemName: "fan")
+            HStack(spacing: 4) {
+                MenuBarFanIcon(filledBladeCount: model.menuBarFilledBladeCount)
+
+                if let menuBarTitle = model.menuBarTitle {
+                    Text(menuBarTitle)
+                }
             }
         }
         .menuBarExtraStyle(.window)
