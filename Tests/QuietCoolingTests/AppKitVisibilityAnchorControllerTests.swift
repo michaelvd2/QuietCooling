@@ -20,7 +20,7 @@ final class AppKitVisibilityAnchorControllerTests: XCTestCase {
         XCTAssertEqual(controller.buttonImageScaling, NSImageScaling.scaleNone)
         XCTAssertTrue(controller.buttonHasContrastBackground)
         if let screenFrame = NSScreen.main?.frame, let panelFrame = controller.panelFrame {
-            XCTAssertLessThanOrEqual(panelFrame.maxX, screenFrame.maxX - 700)
+            XCTAssertLessThanOrEqual(panelFrame.maxX, screenFrame.maxX - 780)
         }
     }
 

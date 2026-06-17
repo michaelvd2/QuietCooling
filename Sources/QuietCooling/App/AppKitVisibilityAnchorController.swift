@@ -5,7 +5,7 @@ import Combine
 final class AppKitVisibilityAnchorController: NSObject {
     private let model: AppModel
     private let onOpenControls: @MainActor () -> Void
-    private let badgeSize = NSSize(width: 46, height: 30)
+    private let badgeSize = NSSize(width: 42, height: 30)
     private var panel: NSPanel?
     private weak var button: NSButton?
     private var modelObserver: AnyCancellable?
@@ -118,9 +118,9 @@ final class AppKitVisibilityAnchorController: NSObject {
     private func position(_ anchorPanel: NSPanel) {
         let frame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let size = anchorPanel.frame.size
-        let cropAlignedX = frame.minX + max(0, frame.width - 800)
+        let cropAlignedX = frame.minX + max(0, frame.width - 822)
         let origin = NSPoint(
-            x: min(frame.maxX - size.width - 14, cropAlignedX),
+            x: min(frame.maxX - size.width - 54, cropAlignedX),
             y: frame.maxY - size.height
         )
         anchorPanel.setFrameOrigin(origin)
