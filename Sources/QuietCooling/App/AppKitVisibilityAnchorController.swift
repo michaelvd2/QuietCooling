@@ -5,7 +5,7 @@ import Combine
 final class AppKitVisibilityAnchorController: NSObject {
     private let model: AppModel
     private let onOpenControls: @MainActor () -> Void
-    private let badgeSize = NSSize(width: 58, height: 32)
+    private let badgeSize = NSSize(width: 46, height: 30)
     private var panel: NSPanel?
     private weak var button: NSButton?
     private var modelObserver: AnyCancellable?
@@ -38,6 +38,10 @@ final class AppKitVisibilityAnchorController: NSObject {
 
     var buttonToolTip: String? {
         button?.toolTip
+    }
+
+    var buttonImageScaling: NSImageScaling {
+        button?.imageScaling ?? .scaleNone
     }
 
     var panelSize: NSSize {
@@ -97,11 +101,11 @@ final class AppKitVisibilityAnchorController: NSObject {
         button.action = #selector(openControls(_:))
         button.isBordered = false
         button.imagePosition = .imageOnly
-        button.imageScaling = .scaleProportionallyUpOrDown
+        button.imageScaling = .scaleNone
         button.title = ""
         button.toolTip = model.menuBarTooltip
         button.wantsLayer = true
-        button.layer?.cornerRadius = 9
+        button.layer?.cornerRadius = 8
         button.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.56).cgColor
         button.layer?.borderColor = NSColor.black.withAlphaComponent(0.08).cgColor
         button.layer?.borderWidth = 0.5
@@ -114,7 +118,7 @@ final class AppKitVisibilityAnchorController: NSObject {
     private func position(_ anchorPanel: NSPanel) {
         let frame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let size = anchorPanel.frame.size
-        let cropAlignedX = frame.minX + max(0, frame.width - 650)
+        let cropAlignedX = frame.minX + max(0, frame.width - 800)
         let origin = NSPoint(
             x: min(frame.maxX - size.width - 14, cropAlignedX),
             y: frame.maxY - size.height
