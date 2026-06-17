@@ -165,6 +165,11 @@ enum CoolingPolicy {
                 return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
             }
 
+            let baselineRPM = observedSystemBaseline()
+            guard preCoolingCeiling > baselineRPM else {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
+            }
+
             let target: Int
             if temperatureC >= configuration.rampEndThresholdC {
                 target = preCoolingCeiling
@@ -172,12 +177,12 @@ enum CoolingPolicy {
                 let rawProgress = (temperatureC - configuration.coolThresholdC)
                     / (configuration.rampEndThresholdC - configuration.coolThresholdC)
                 let shapedProgress = pow(min(max(rawProgress, 0), 1), inputs.strength.rampExponent)
-                let rpm = Double(fanRange.minimumRPM)
-                    + (Double(preCoolingCeiling - fanRange.minimumRPM) * shapedProgress)
+                let rpm = Double(baselineRPM)
+                    + (Double(preCoolingCeiling - baselineRPM) * shapedProgress)
                 target = fanRange.clamped(Int(rpm.rounded()))
             }
 
-            let boostRPM = max(0, target - (inputs.systemBaselineRPM ?? inputs.currentRPM ?? target))
+            let boostRPM = max(0, target - baselineRPM)
             return guardedFloorDecision(
                 targetRPM: target,
                 status: .preCooling(boostRPM: boostRPM)

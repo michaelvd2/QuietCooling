@@ -29,8 +29,8 @@ struct QuietCoolingPopoverView: View {
                 }
 
                 Text(model.preCoolingStrength == .custom
-                    ? "Pre-cools up to your custom ceiling. macOS can still go full blast when needed."
-                    : "Pre-cools within your quiet range. macOS can still go full blast when needed.")
+                    ? "Tracks macOS, then ramps earlier up to your custom ceiling."
+                    : "Tracks macOS, then ramps earlier within your quiet range.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

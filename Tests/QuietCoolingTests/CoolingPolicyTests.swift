@@ -141,9 +141,30 @@ final class CoolingPolicyTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(decision.command, .setMinimumRPM(1_800))
-        XCTAssertEqual(decision.targetRPM, 1_800)
-        XCTAssertEqual(decision.status, .preCooling(boostRPM: 200))
+        XCTAssertEqual(decision.command, .setMinimumRPM(2_000))
+        XCTAssertEqual(decision.targetRPM, 2_000)
+        XCTAssertEqual(decision.status, .preCooling(boostRPM: 400))
+    }
+
+    func testPreventFanBlastTracksSystemBaselineWithMoreSensitiveRamp() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 55,
+                currentRPM: 1_850,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_400,
+                strength: .medium,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil,
+                systemBaselineRPM: 1_850
+            )
+        )
+
+        XCTAssertEqual(decision.command, .setMinimumRPM(2_125))
+        XCTAssertEqual(decision.targetRPM, 2_125)
+        XCTAssertEqual(decision.status, .preCooling(boostRPM: 275))
     }
 
     func testPreventFanBlastHoldsQuietCeilingBeforeVeryHotRelease() {
