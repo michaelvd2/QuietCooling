@@ -5,8 +5,6 @@ struct UserPreferences: Equatable {
     var quietCeilingRPM: Int
     var preCoolingStrength: PreCoolingStrength
     var launchAtLogin: Bool
-    var menuBarDisplayMode: MenuBarDisplayMode
-    var showModeIndicator: Bool
     var selectedSensorID: String?
 
     static let defaults = UserPreferences(
@@ -14,8 +12,6 @@ struct UserPreferences: Equatable {
         quietCeilingRPM: 2_200,
         preCoolingStrength: .medium,
         launchAtLogin: false,
-        menuBarDisplayMode: .iconOnly,
-        showModeIndicator: false,
         selectedSensorID: nil
     )
 }
@@ -26,8 +22,6 @@ final class PreferencesStore {
         static let quietCeilingRPM = "quietCeilingRPM"
         static let preCoolingStrength = "preCoolingStrength"
         static let launchAtLogin = "launchAtLogin"
-        static let menuBarDisplayMode = "menuBarDisplayMode"
-        static let showModeIndicator = "showModeIndicator"
         static let selectedSensorID = "selectedSensorID"
     }
 
@@ -51,11 +45,6 @@ final class PreferencesStore {
                 default: UserPreferences.defaults.preCoolingStrength
             ),
             launchAtLogin: defaults.bool(forKey: Key.launchAtLogin),
-            menuBarDisplayMode: enumValue(
-                forKey: Key.menuBarDisplayMode,
-                default: UserPreferences.defaults.menuBarDisplayMode
-            ),
-            showModeIndicator: defaults.bool(forKey: Key.showModeIndicator),
             selectedSensorID: defaults.string(forKey: Key.selectedSensorID)
         )
     }
@@ -65,8 +54,6 @@ final class PreferencesStore {
         defaults.set(preferences.quietCeilingRPM, forKey: Key.quietCeilingRPM)
         defaults.set(preferences.preCoolingStrength.rawValue, forKey: Key.preCoolingStrength)
         defaults.set(preferences.launchAtLogin, forKey: Key.launchAtLogin)
-        defaults.set(preferences.menuBarDisplayMode.rawValue, forKey: Key.menuBarDisplayMode)
-        defaults.set(preferences.showModeIndicator, forKey: Key.showModeIndicator)
 
         if let selectedSensorID = preferences.selectedSensorID {
             defaults.set(selectedSensorID, forKey: Key.selectedSensorID)

@@ -9,7 +9,7 @@ This repo builds a native SwiftUI menu bar app with:
 - Off, System, Always Quiet, and Prevent Fan Blast modes
 - quiet ceiling RPM control
 - pre-cooling strength control
-- menu bar display preferences
+- compact menu bar fan/temperature badge with live RPM tooltip
 - persisted settings
 - a 2-second controller loop
 - explicit fan/sensor protocols

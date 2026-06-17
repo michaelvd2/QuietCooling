@@ -227,15 +227,6 @@ private struct SettingsPanel: View {
             Text("Settings")
                 .font(.subheadline.weight(.semibold))
 
-            Picker("Menu bar display", selection: $model.menuBarDisplayMode) {
-                ForEach(MenuBarDisplayMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-
-            Toggle("Show mode indicator in menu bar", isOn: $model.showModeIndicator)
-                .toggleStyle(.checkbox)
-
             HelperControls(model: model)
 
             HStack {

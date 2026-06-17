@@ -36,12 +36,6 @@ final class AppModel: ObservableObject {
     }
 
     @Published private(set) var launchAtLogin: Bool
-    @Published var menuBarDisplayMode: MenuBarDisplayMode {
-        didSet { persistPreferences() }
-    }
-    @Published var showModeIndicator: Bool {
-        didSet { persistPreferences() }
-    }
 
     @Published private(set) var fans: [Fan] = []
     @Published private(set) var fanRPM: Int?
@@ -84,8 +78,6 @@ final class AppModel: ObservableObject {
         self.quietCeilingRPM = preferences.quietCeilingRPM
         self.preCoolingStrength = preferences.preCoolingStrength
         self.launchAtLogin = preferences.launchAtLogin
-        self.menuBarDisplayMode = preferences.menuBarDisplayMode
-        self.showModeIndicator = preferences.showModeIndicator
         self.helperInstallStatus = helperServiceManager.status()
         Self.logger.info("Helper status init: \(self.helperInstallStatus.displayText, privacy: .public)")
 
@@ -121,16 +113,6 @@ final class AppModel: ObservableObject {
         return AppModel(
             fanController: MockFanController(environment: environment),
             sensorProvider: MockThermalSensorProvider(environment: environment)
-        )
-    }
-
-    var menuBarTitle: String? {
-        MenuBarFormatter.title(
-            displayMode: menuBarDisplayMode,
-            showModeIndicator: showModeIndicator,
-            mode: selectedMode,
-            fanRPM: fanRPM,
-            temperatureC: temperatureC
         )
     }
 
@@ -254,8 +236,6 @@ final class AppModel: ObservableObject {
         quietCeilingRPM = defaults.quietCeilingRPM
         preCoolingStrength = defaults.preCoolingStrength
         launchAtLogin = defaults.launchAtLogin
-        menuBarDisplayMode = defaults.menuBarDisplayMode
-        showModeIndicator = defaults.showModeIndicator
         preferencesStore.save(defaults)
         tick()
     }
@@ -328,8 +308,6 @@ final class AppModel: ObservableObject {
                 quietCeilingRPM: quietCeilingRPM,
                 preCoolingStrength: preCoolingStrength,
                 launchAtLogin: launchAtLogin,
-                menuBarDisplayMode: menuBarDisplayMode,
-                showModeIndicator: showModeIndicator,
                 selectedSensorID: nil
             )
         )

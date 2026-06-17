@@ -10,8 +10,6 @@ final class PreferencesStoreTests: XCTestCase {
             quietCeilingRPM: 2_450,
             preCoolingStrength: .strong,
             launchAtLogin: true,
-            menuBarDisplayMode: .fanSpeedAndTemperature,
-            showModeIndicator: true,
             selectedSensorID: "soc-die"
         )
 
@@ -25,15 +23,12 @@ final class PreferencesStoreTests: XCTestCase {
         defaults.set("not-a-mode", forKey: "selectedMode")
         defaults.set(-100, forKey: "quietCeilingRPM")
         defaults.set("not-strength", forKey: "preCoolingStrength")
-        defaults.set("not-display", forKey: "menuBarDisplayMode")
 
         let preferences = PreferencesStore(defaults: defaults).load()
 
         XCTAssertEqual(preferences.selectedMode, .preventFanBlast)
         XCTAssertEqual(preferences.quietCeilingRPM, 2_200)
         XCTAssertEqual(preferences.preCoolingStrength, .medium)
-        XCTAssertEqual(preferences.menuBarDisplayMode, .iconOnly)
-        XCTAssertFalse(preferences.showModeIndicator)
     }
 
     func testResetRestoresDefaults() {
@@ -45,8 +40,6 @@ final class PreferencesStoreTests: XCTestCase {
                 quietCeilingRPM: 2_800,
                 preCoolingStrength: .strong,
                 launchAtLogin: true,
-                menuBarDisplayMode: .temperature,
-                showModeIndicator: true,
                 selectedSensorID: "gpu"
             )
         )
