@@ -57,6 +57,14 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    func toggle(relativeTo anchorFrame: NSRect? = nil) {
+        if isVisible {
+            close()
+        } else {
+            show(relativeTo: anchorFrame)
+        }
+    }
+
     func close() {
         removeAppDeactivationObserver()
         window?.delegate = nil

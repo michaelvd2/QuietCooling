@@ -52,4 +52,16 @@ final class AppKitControlsWindowControllerTests: XCTestCase {
 
         XCTAssertFalse(controller.isVisible)
     }
+
+    func testToggleClosesVisibleControlsWindow() {
+        let model = AppModel.demo()
+        let controller = AppKitControlsWindowController(model: model)
+
+        controller.show()
+        XCTAssertTrue(controller.isVisible)
+
+        controller.toggle()
+
+        XCTAssertFalse(controller.isVisible)
+    }
 }
