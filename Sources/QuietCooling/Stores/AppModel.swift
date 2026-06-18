@@ -411,9 +411,27 @@ final class AppModel: ObservableObject {
             case .setMinimumRPM(let rpm):
                 let fanIDs = Set(fans.map(\.id))
                 if lastAppliedTargetRPM != rpm || lastAppliedFanIDs != fanIDs {
+                    var appliedFanIDs = Set<Fan.ID>()
                     for fan in fans {
                         let range = try fanController.readFanMinMax(fanID: fan.id)
-                        try fanController.setFanMinimumRPM(fanID: fan.id, rpm: range.clamped(rpm))
+                        let targetRPM = range.clamped(rpm)
+                        let latestRPM = try fanController.readFanRPM(fanID: fan.id)
+
+                        guard canSafelyApplyFloor(targetRPM: targetRPM, latestRPM: latestRPM, range: range) else {
+                            try fanController.releaseFanControl(fanID: fan.id)
+                            continue
+                        }
+
+                        try fanController.setFanMinimumRPM(fanID: fan.id, rpm: targetRPM)
+                        appliedFanIDs.insert(fan.id)
+                    }
+
+                    guard appliedFanIDs == fanIDs else {
+                        lastAppliedTargetRPM = nil
+                        lastAppliedFanIDs = []
+                        status = .followingMacOS
+                        lastErrorMessage = nil
+                        return
                     }
                 }
                 lastAppliedTargetRPM = rpm
@@ -430,6 +448,28 @@ final class AppModel: ObservableObject {
         if let primaryFan = fans.first {
             fanRPM = try? fanController.readFanRPM(fanID: primaryFan.id)
         }
+    }
+
+    private func canSafelyApplyFloor(targetRPM: Int, latestRPM: Int, range: FanRange) -> Bool {
+        let tolerance = CoolingPolicyConfiguration.defaults.minimumManualBoostRPM
+        let clampedLatestRPM = range.clamped(latestRPM)
+        let clampedTargetRPM = range.clamped(targetRPM)
+
+        let latestRPMIsQuietCoolingFloor: Bool
+        if let lastAppliedTargetRPM {
+            latestRPMIsQuietCoolingFloor =
+                abs(clampedLatestRPM - lastAppliedTargetRPM) <= tolerance
+                || (clampedTargetRPM < lastAppliedTargetRPM && clampedLatestRPM <= lastAppliedTargetRPM + tolerance)
+        } else {
+            latestRPMIsQuietCoolingFloor = false
+        }
+
+        if !latestRPMIsQuietCoolingFloor {
+            observedSystemBaselineRPM = clampedLatestRPM
+        }
+
+        let baselineRPM = range.clamped(observedSystemBaselineRPM ?? clampedLatestRPM)
+        return clampedTargetRPM >= baselineRPM + tolerance
     }
 
     private func persistPreferences() {

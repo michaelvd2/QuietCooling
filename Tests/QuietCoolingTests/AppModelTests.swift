@@ -303,6 +303,53 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testFanFloorWriteRechecksLatestRPMBeforeApplyingTarget() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPMReadSequence: [1_400, 1_400, 1_400, 2_600])
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 40)
+        )
+
+        model.tick()
+        fanController.setMinimumRPMCalls.removeAll()
+        fanController.releaseCallCount = 0
+        model.setTemporaryTestRPM(2_400)
+
+        model.setTemporaryFanTestActive(true)
+
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [])
+        XCTAssertEqual(fanController.releaseCallCount, 1)
+        XCTAssertEqual(model.status, .followingMacOS)
+    }
+
+    @MainActor
+    func testFanFloorWriteCanLowerQuietCoolingFloorWithoutGoingBelowMacOSBaseline() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_400)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 40)
+        )
+
+        model.tick()
+        fanController.setMinimumRPMCalls.removeAll()
+        model.setTemporaryTestRPM(4_000)
+        model.setTemporaryFanTestActive(true)
+        fanController.currentRPM = 4_000
+
+        model.setTemporaryTestRPM(3_000)
+
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [4_000, 3_000])
+        XCTAssertEqual(fanController.releaseCallCount, 1)
+        XCTAssertEqual(model.status, .temporaryTest(targetRPM: 3_000))
+    }
+
+    @MainActor
     func testFanRampProgressShowsActualAndTargetWhileFanCatchesUp() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
@@ -455,6 +502,7 @@ private final class RecordingFanController: FanControllerProtocol {
     var currentRPM: Int
     var setMinimumRPMCalls: [Int] = []
     var releaseCallCount = 0
+    private var currentRPMReadSequence: [Int]
 
     private let fan = Fan(
         id: "fan-0",
@@ -464,6 +512,12 @@ private final class RecordingFanController: FanControllerProtocol {
 
     init(currentRPM: Int) {
         self.currentRPM = currentRPM
+        self.currentRPMReadSequence = []
+    }
+
+    init(currentRPMReadSequence: [Int]) {
+        self.currentRPMReadSequence = currentRPMReadSequence
+        self.currentRPM = currentRPMReadSequence.last ?? 1_200
     }
 
     func listFans() throws -> [Fan] {
@@ -471,7 +525,12 @@ private final class RecordingFanController: FanControllerProtocol {
     }
 
     func readFanRPM(fanID: Fan.ID) throws -> Int {
-        currentRPM
+        if !currentRPMReadSequence.isEmpty {
+            let nextRPM = currentRPMReadSequence.removeFirst()
+            currentRPM = nextRPM
+            return nextRPM
+        }
+        return currentRPM
     }
 
     func readFanMinMax(fanID: Fan.ID) throws -> FanRange {
