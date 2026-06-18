@@ -1,10 +1,11 @@
 import AppKit
 import Foundation
 import OSLog
+import QuietCoolingShared
 
 @MainActor
 final class AppModel: ObservableObject {
-    private static let logger = Logger(subsystem: "com.mvandijk.QuietCooling", category: "AppModel")
+    private static let logger = Logger(subsystem: QuietCoolingHelperConstants.appBundleIdentifier, category: "AppModel")
 
     @Published var selectedMode: CoolingMode {
         didSet {
@@ -78,7 +79,7 @@ final class AppModel: ObservableObject {
     private var observedSystemBaselineRPM: Int?
 
     init(
-        preferencesStore: PreferencesStore = PreferencesStore(),
+        preferencesStore: PreferencesStore = .standardStore(),
         fanController: FanControllerProtocol,
         sensorProvider: ThermalSensorProviderProtocol,
         loginItemManager: LoginItemManaging = LoginItemManager(),
@@ -113,7 +114,7 @@ final class AppModel: ObservableObject {
     }
 
     convenience init(
-        preferencesStore: PreferencesStore = PreferencesStore(),
+        preferencesStore: PreferencesStore = .standardStore(),
         hardwareBackend: HardwareBackend,
         loginItemManager: LoginItemManaging = LoginItemManager(),
         helperServiceManager: HelperServiceManaging = HelperServiceManager()

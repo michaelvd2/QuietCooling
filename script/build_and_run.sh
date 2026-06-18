@@ -3,7 +3,7 @@ set -euo pipefail
 
 MODE="${1:-run}"
 APP_NAME="QuietCooling"
-BUNDLE_ID="com.mvandijk.QuietCooling"
+BUNDLE_ID="com.mvandijk.QuietCooling.MenuBar"
 HELPER_NAME="QuietCoolingHelper"
 HELPER_LABEL="com.mvandijk.QuietCooling.Helper"
 MIN_SYSTEM_VERSION="14.0"
@@ -11,6 +11,7 @@ MIN_SYSTEM_VERSION="14.0"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
+INSTALLED_APP_BUNDLE="/Applications/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_BINARY="$APP_MACOS/$APP_NAME"
@@ -59,7 +60,7 @@ cat >"$INFO_PLIST" <<PLIST
   <key>LSMinimumSystemVersion</key>
   <string>$MIN_SYSTEM_VERSION</string>
   <key>LSUIElement</key>
-  <false/>
+  <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
 </dict>
@@ -113,7 +114,9 @@ codesign --force --options runtime --timestamp=none --sign "$SIGNING_IDENTITY" "
 codesign --force --options runtime --timestamp=none --sign "$SIGNING_IDENTITY" "$APP_BUNDLE"
 
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE"
+  rm -rf "$INSTALLED_APP_BUNDLE"
+  ditto "$APP_BUNDLE" "$INSTALLED_APP_BUNDLE"
+  /usr/bin/open "$INSTALLED_APP_BUNDLE"
 }
 
 case "$MODE" in

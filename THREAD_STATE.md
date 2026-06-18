@@ -3,16 +3,17 @@
 - Goal: build a small premium macOS cooling controller with real fan telemetry/control, floor-only safety, and a menu bar/status UI.
 - Worktree: `/Users/michaelvandijk/Developer/QuietCooling/.worktrees/privileged-helper`
 - Branch: `privileged-helper`
-- Latest fix: QuietCooling launches as a regular foreground app with a visible floating `QuietCooling` controls window and a tiny always-on-top `QC` anchor. Closing the full controls window leaves the `QC` anchor visible; clicking it reopens the full controls. The AppKit status item remains, uses variable width, a `QC` title fallback, and a stable autosave name so menu bar managers can remember it.
+- Latest fix: the overlay/fallback status icon path was deleted. QuietCooling now ships as a native `NSStatusItem` menu-bar app under bundle id `com.mvandijk.QuietCooling.MenuBar`, avoiding the corrupted/edge-collapsed state tied to the old `com.mvandijk.QuietCooling` identity.
+- Identity migration: user preferences migrate once from the legacy defaults domain when the new domain is empty. The privileged helper keeps label `com.mvandijk.QuietCooling.Helper`, but its associated client bundle id is now `com.mvandijk.QuietCooling.MenuBar`.
 - Safety model: fan writes are floor-only and release at maximum-cooling thresholds, so macOS can still take over full cooling.
 - Installed app: `/Applications/QuietCooling.app`
 - Validation:
-  - `swift test` passed: 63 tests.
+  - `swift test` passed: 73 tests.
   - `./script/build_and_run.sh --verify` passed.
-  - `/Applications/QuietCooling.app/Contents/MacOS/QuietCooling --diagnose-helper` reported `helper.status=legacyEnabled`, `helper.fans=2`, `helper.canWriteFloors=true`, `helper.limitation=none`.
-  - Visual evidence path: `/tmp/quietcooling-evidence/installed-visible-window.png` shows the installed app window visible on screen.
-  - Deep-fix evidence: `/tmp/quietcooling-evidence/deep-fixer-after-floating.png` shows the floating controls window above the active work area.
-  - Accessibility close/quit evidence: pressing the footer `Close` button left the process running with zero windows; `open -a /Applications/QuietCooling.app` reopened the controls window; `tell application "QuietCooling" to quit` terminated the process.
-  - Visibility-anchor evidence: `/tmp/quietcooling-evidence/anchor-after-close.png` shows the tiny `QC` anchor visible after the full controls window is closed; Accessibility click on that anchor reopened the full controls.
-- Caveat: Ice (`com.jordanbaird.Ice`) is running and still reports the QuietCooling status item at x `-1`, so the menu bar icon is hidden/offscreen by the menu bar manager. The app-owned `QC` anchor, app window, Dock/menu presence, Close button, and standard Quit path are now the reliable access path.
-- Next: dogfood the visible window controls. To make the menu bar icon itself visible, move `QC`/QuietCooling from Ice's hidden section into the visible menu bar section.
+  - Installed app plist verified: `CFBundleIdentifier=com.mvandijk.QuietCooling.MenuBar`, `LSUIElement=true`.
+  - Native status item AX evidence: `pos=1217,3`, `size=44,24`, tooltip/accessibility value `3,677 RPM`.
+  - Helper plist verified: `AssociatedBundleIdentifiers = ["com.mvandijk.QuietCooling.MenuBar"]`.
+  - Helper diagnostics verified: 2 real fans, RPM readback, `helper.canWriteFloors=true`, `helper.limitation=none`.
+  - Final visual evidence: `/tmp/quietcooling-evidence/hardened-final-main-icon-crop.png` shows the native compact fan+temperature icon (`63°`) in the menu bar, without overlay/double/pressed background.
+- Caveat: the old bundle id still reproduces bad native status-item placement on this machine; do not revert to `com.mvandijk.QuietCooling` without first finding and clearing the hidden system state that causes that placement.
+- Next: dogfood mode controls and floor-only fan behavior from the visible native menu-bar item.

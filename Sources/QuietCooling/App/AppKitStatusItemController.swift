@@ -1,16 +1,16 @@
 import AppKit
 import Combine
-import SwiftUI
 
 @MainActor
-final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
+final class AppKitStatusItemController: NSObject {
     private let model: AppModel
+    private let onOpenControls: @MainActor () -> Void
     private var statusItem: NSStatusItem?
-    private var popover: NSPopover?
     private var modelObserver: AnyCancellable?
 
-    init(model: AppModel) {
+    init(model: AppModel, onOpenControls: @escaping @MainActor () -> Void) {
         self.model = model
+        self.onOpenControls = onOpenControls
         super.init()
     }
 
@@ -38,25 +38,24 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         statusItem?.autosaveName
     }
 
+    var anchorFrame: NSRect? {
+        guard let button = statusItem?.button,
+              let window = button.window
+        else {
+            return nil
+        }
+
+        let frameInWindow = button.convert(button.bounds, to: nil)
+        return window.convertToScreen(frameInWindow)
+    }
+
     func install() {
         guard statusItem == nil else {
             updateStatusItem()
             return
         }
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.autosaveName = "QuietCooling.StatusItem.Compact"
-        item.isVisible = true
-        statusItem = item
-
-        if let button = item.button {
-            button.target = self
-            button.action = #selector(togglePopover(_:))
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.imagePosition = .imageOnly
-            button.setAccessibilityLabel("QuietCooling")
-        }
-
+        createStatusItem()
         modelObserver = model.objectWillChange.sink { [weak self] _ in
             Task { @MainActor in
                 self?.updateStatusItem()
@@ -66,8 +65,23 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         updateStatusItem()
     }
 
+    private func createStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.autosaveName = "QuietCoolingStatusItemV2"
+        item.isVisible = true
+        statusItem = item
+
+        if let button = item.button {
+            button.target = self
+            button.action = #selector(openControls(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.imagePosition = .imageOnly
+            button.imageScaling = .scaleProportionallyDown
+            button.setAccessibilityLabel("QuietCooling")
+        }
+    }
+
     func remove() {
-        closePopover()
         modelObserver = nil
 
         if let statusItem {
@@ -76,20 +90,12 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         statusItem = nil
     }
 
-    @objc private func togglePopover(_ sender: Any?) {
-        guard let button = statusItem?.button else {
-            return
-        }
-
-        if popover?.isShown == true {
-            closePopover()
-        } else {
-            showPopover(relativeTo: button)
-        }
+    func pressForTests() {
+        openControls(nil)
     }
 
-    func popoverDidClose(_ notification: Notification) {
-        model.tick()
+    @objc private func openControls(_ sender: Any?) {
+        onOpenControls()
     }
 
     private func updateStatusItem() {
@@ -107,20 +113,4 @@ final class AppKitStatusItemController: NSObject, NSPopoverDelegate {
         statusItem?.isVisible = true
     }
 
-    private func showPopover(relativeTo button: NSStatusBarButton) {
-        let popover = NSPopover()
-        popover.behavior = .transient
-        popover.delegate = self
-        popover.contentSize = NSSize(width: 360, height: 500)
-        popover.contentViewController = NSHostingController(
-            rootView: QuietCoolingPopoverView(model: model)
-        )
-        self.popover = popover
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-    }
-
-    private func closePopover() {
-        popover?.performClose(nil)
-        popover = nil
-    }
 }

@@ -224,7 +224,7 @@ private enum LegacyLaunchDaemonScript {
           </dict>
           <key>AssociatedBundleIdentifiers</key>
           <array>
-            <string>com.mvandijk.QuietCooling</string>
+            <string>\(QuietCoolingHelperConstants.appBundleIdentifier)</string>
           </array>
         </dict>
         </plist>

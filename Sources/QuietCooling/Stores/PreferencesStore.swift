@@ -1,4 +1,5 @@
 import Foundation
+import QuietCoolingShared
 
 struct UserPreferences: Equatable {
     var selectedMode: CoolingMode
@@ -32,9 +33,19 @@ final class PreferencesStore {
     }
 
     private let defaults: UserDefaults
+    private let legacyDefaults: UserDefaults?
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, legacyDefaults: UserDefaults? = nil) {
         self.defaults = defaults
+        self.legacyDefaults = legacyDefaults
+        migrateLegacyPreferencesIfNeeded()
+    }
+
+    static func standardStore() -> PreferencesStore {
+        PreferencesStore(
+            defaults: .standard,
+            legacyDefaults: UserDefaults(suiteName: QuietCoolingHelperConstants.legacyAppBundleIdentifier)
+        )
     }
 
     func load() -> UserPreferences {
@@ -78,6 +89,30 @@ final class PreferencesStore {
 
     func reset() {
         save(.defaults)
+    }
+
+    private func migrateLegacyPreferencesIfNeeded() {
+        guard defaults.object(forKey: Key.selectedMode) == nil,
+              let legacyDefaults,
+              legacyDefaults.object(forKey: Key.selectedMode) != nil
+        else {
+            return
+        }
+
+        for key in [
+            Key.selectedMode,
+            Key.quietCeilingRPM,
+            Key.manualTargetRPM,
+            Key.customPreCoolingCeilingRPM,
+            Key.preCoolingStrength,
+            Key.launchAtLogin,
+            Key.selectedSensorID
+        ] {
+            guard let value = legacyDefaults.object(forKey: key) else {
+                continue
+            }
+            defaults.set(value, forKey: key)
+        }
     }
 
     private func enumValue<T: RawRepresentable>(forKey key: String, default fallback: T) -> T

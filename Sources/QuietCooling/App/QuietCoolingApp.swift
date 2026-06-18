@@ -8,10 +8,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let automaticTerminationReason = "QuietCooling menu bar controller"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(.accessory)
         ProcessInfo.processInfo.disableAutomaticTermination(automaticTerminationReason)
         ProcessInfo.processInfo.disableSuddenTermination()
         QuietCoolingRuntime.shared.start()
+
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -37,30 +38,26 @@ final class QuietCoolingRuntime {
     private var model: AppModel?
     private var statusItemController: AppKitStatusItemController?
     private var controlsWindowController: AppKitControlsWindowController?
-    private var visibilityAnchorController: AppKitVisibilityAnchorController?
 
     func configure(model: AppModel) {
         self.model = model
-        self.statusItemController = AppKitStatusItemController(model: model)
         self.controlsWindowController = AppKitControlsWindowController(model: model)
-        self.visibilityAnchorController = AppKitVisibilityAnchorController(model: model) { [weak self] in
+        self.statusItemController = AppKitStatusItemController(model: model) { [weak self] in
             self?.toggleControlsWindow()
         }
     }
 
     func start() {
-        model?.start()
         statusItemController?.install()
-        visibilityAnchorController?.show()
-        showControlsWindow()
+        model?.start()
     }
 
     func showControlsWindow() {
-        controlsWindowController?.show(relativeTo: visibilityAnchorController?.panelFrame)
+        controlsWindowController?.show(relativeTo: controlsAnchorFrame)
     }
 
     func toggleControlsWindow() {
-        controlsWindowController?.toggle(relativeTo: visibilityAnchorController?.panelFrame)
+        controlsWindowController?.toggle(relativeTo: controlsAnchorFrame)
     }
 
     func closeControlsWindow() {
@@ -70,8 +67,11 @@ final class QuietCoolingRuntime {
     func stop() {
         statusItemController?.remove()
         controlsWindowController?.close()
-        visibilityAnchorController?.close()
         model?.stopAndRelease()
+    }
+
+    private var controlsAnchorFrame: NSRect? {
+        statusItemController?.anchorFrame
     }
 }
 

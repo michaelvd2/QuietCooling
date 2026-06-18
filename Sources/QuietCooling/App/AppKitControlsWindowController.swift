@@ -119,7 +119,6 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func activateApp() {
-        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }
 

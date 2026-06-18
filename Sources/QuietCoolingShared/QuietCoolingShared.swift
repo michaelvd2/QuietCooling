@@ -24,6 +24,8 @@ public struct HelperFan: Codable, Equatable, Sendable {
 }
 
 public enum QuietCoolingHelperConstants {
+    public static let appBundleIdentifier = "com.mvandijk.QuietCooling.MenuBar"
+    public static let legacyAppBundleIdentifier = "com.mvandijk.QuietCooling"
     public static let label = "com.mvandijk.QuietCooling.Helper"
     public static let plistName = "\(label).plist"
     public static let machServiceName = label

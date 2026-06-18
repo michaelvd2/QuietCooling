@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class AppDelegateTests: XCTestCase {
-    func testRegularAppAllowsStandardQuit() {
+    func testMenuBarAppAllowsStandardQuit() {
         let delegate = AppDelegate()
 
         XCTAssertEqual(delegate.applicationShouldTerminate(NSApplication.shared), .terminateNow)

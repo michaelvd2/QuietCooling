@@ -56,6 +56,54 @@ final class PreferencesStoreTests: XCTestCase {
         XCTAssertEqual(store.load(), .defaults)
     }
 
+    func testMigratesLegacyPreferencesWhenCurrentDomainIsEmpty() {
+        let defaults = isolatedDefaults()
+        let legacyDefaults = isolatedDefaults()
+        let legacyPreferences = UserPreferences(
+            selectedMode: .manual,
+            quietCeilingRPM: 2_950,
+            manualTargetRPM: 3_500,
+            customPreCoolingCeilingRPM: 4_200,
+            preCoolingStrength: .custom,
+            launchAtLogin: true,
+            selectedSensorID: "soc-die"
+        )
+        PreferencesStore(defaults: legacyDefaults).save(legacyPreferences)
+
+        let store = PreferencesStore(defaults: defaults, legacyDefaults: legacyDefaults)
+
+        XCTAssertEqual(store.load(), legacyPreferences)
+    }
+
+    func testDoesNotOverwriteExistingCurrentPreferencesDuringLegacyMigration() {
+        let defaults = isolatedDefaults()
+        let legacyDefaults = isolatedDefaults()
+        let currentPreferences = UserPreferences(
+            selectedMode: .alwaysQuiet,
+            quietCeilingRPM: 2_450,
+            manualTargetRPM: 3_250,
+            customPreCoolingCeilingRPM: 3_650,
+            preCoolingStrength: .strong,
+            launchAtLogin: false,
+            selectedSensorID: "gpu"
+        )
+        let legacyPreferences = UserPreferences(
+            selectedMode: .manual,
+            quietCeilingRPM: 2_950,
+            manualTargetRPM: 3_500,
+            customPreCoolingCeilingRPM: 4_200,
+            preCoolingStrength: .custom,
+            launchAtLogin: true,
+            selectedSensorID: "soc-die"
+        )
+        PreferencesStore(defaults: defaults).save(currentPreferences)
+        PreferencesStore(defaults: legacyDefaults).save(legacyPreferences)
+
+        let store = PreferencesStore(defaults: defaults, legacyDefaults: legacyDefaults)
+
+        XCTAssertEqual(store.load(), currentPreferences)
+    }
+
     private func isolatedDefaults() -> UserDefaults {
         let suiteName = "QuietCoolingTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

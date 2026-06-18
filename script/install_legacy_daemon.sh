@@ -6,6 +6,7 @@ APP_BUNDLE="${QUIETCOOLING_APP_BUNDLE:-/Applications/QuietCooling.app}"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/QuietCooling"
 HELPER_BINARY="$APP_BUNDLE/Contents/MacOS/QuietCoolingHelper"
 LABEL="com.mvandijk.QuietCooling.Helper"
+APP_BUNDLE_ID="com.mvandijk.QuietCooling.MenuBar"
 PLIST="/Library/LaunchDaemons/$LABEL.plist"
 
 require_app() {
@@ -41,7 +42,7 @@ write_plist() {
   </dict>
   <key>AssociatedBundleIdentifiers</key>
   <array>
-    <string>com.mvandijk.QuietCooling</string>
+    <string>$APP_BUNDLE_ID</string>
   </array>
 </dict>
 </plist>
