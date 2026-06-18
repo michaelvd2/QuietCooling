@@ -55,4 +55,33 @@ final class AppKitStatusItemControllerTests: XCTestCase {
 
         XCTAssertEqual(openCallCount, 1)
     }
+
+    func testStatusItemUsesRuntimeExpandedInterfaceBridgeForMacOS27() throws {
+        let controllerSource = try String(contentsOf: appKitStatusItemControllerURL(), encoding: .utf8)
+        let bridgeSource = try String(contentsOf: statusItemBridgeURL(), encoding: .utf8)
+
+        XCTAssertTrue(controllerSource.contains("private var expandedInterfaceBridge: StatusItemExpandedInterfaceBridge?"))
+        XCTAssertTrue(controllerSource.contains("installExpandedInterfaceBridge(for: item)"))
+        XCTAssertTrue(controllerSource.contains("expandedInterfaceBridge?.cancelSessionIfAvailable()"))
+        XCTAssertTrue(bridgeSource.contains("setExpandedInterfaceDelegate:"))
+        XCTAssertTrue(bridgeSource.contains("statusItem:didBeginExpandedInterfaceSession:"))
+        XCTAssertTrue(bridgeSource.contains("statusItemDidEndExpandedInterfaceSession:animated:"))
+        XCTAssertFalse(bridgeSource.contains("NSStatusItemExpandedInterfaceDelegate"))
+    }
+
+    private func appKitStatusItemControllerURL() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/QuietCooling/App/AppKitStatusItemController.swift")
+    }
+
+    private func statusItemBridgeURL() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/QuietCooling/App/StatusItemExpandedInterfaceBridge.swift")
+    }
 }

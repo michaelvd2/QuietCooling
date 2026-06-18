@@ -9,12 +9,22 @@ final class AppKitStatusItemController: NSObject {
 
     private let model: AppModel
     private let onOpenControls: @MainActor () -> Void
+    private let onBeginExpandedInterface: @MainActor () -> Void
+    private let onEndExpandedInterface: @MainActor () -> Void
     private var statusItem: NSStatusItem?
+    private var expandedInterfaceBridge: StatusItemExpandedInterfaceBridge?
     private var modelObserver: AnyCancellable?
 
-    init(model: AppModel, onOpenControls: @escaping @MainActor () -> Void) {
+    init(
+        model: AppModel,
+        onOpenControls: @escaping @MainActor () -> Void,
+        onBeginExpandedInterface: (@MainActor () -> Void)? = nil,
+        onEndExpandedInterface: (@MainActor () -> Void)? = nil
+    ) {
         self.model = model
         self.onOpenControls = onOpenControls
+        self.onBeginExpandedInterface = onBeginExpandedInterface ?? onOpenControls
+        self.onEndExpandedInterface = onEndExpandedInterface ?? {}
         super.init()
     }
 
@@ -74,6 +84,7 @@ final class AppKitStatusItemController: NSObject {
         item.autosaveName = Self.autosaveName
         item.isVisible = true
         statusItem = item
+        installExpandedInterfaceBridge(for: item)
 
         if let button = item.button {
             button.target = self
@@ -85,8 +96,23 @@ final class AppKitStatusItemController: NSObject {
         }
     }
 
+    private func installExpandedInterfaceBridge(for item: NSStatusItem) {
+        expandedInterfaceBridge = StatusItemExpandedInterfaceBridge(
+            statusItem: item,
+            onBegin: { [weak self] in
+                self?.onBeginExpandedInterface()
+            },
+            onEnd: { [weak self] in
+                self?.onEndExpandedInterface()
+            }
+        )
+        expandedInterfaceBridge?.installIfAvailable()
+    }
+
     func remove() {
         modelObserver = nil
+        expandedInterfaceBridge?.cancelSessionIfAvailable()
+        expandedInterfaceBridge = nil
 
         if let statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
@@ -99,6 +125,7 @@ final class AppKitStatusItemController: NSObject {
     }
 
     @objc private func openControls(_ sender: Any?) {
+        expandedInterfaceBridge?.cancelSessionIfAvailable()
         onOpenControls()
     }
 

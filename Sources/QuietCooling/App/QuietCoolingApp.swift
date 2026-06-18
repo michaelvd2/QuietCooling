@@ -43,9 +43,18 @@ final class QuietCoolingRuntime {
     func configure(model: AppModel) {
         self.model = model
         self.controlsWindowController = AppKitControlsWindowController(model: model)
-        self.statusItemController = AppKitStatusItemController(model: model) { [weak self] in
-            self?.toggleControlsWindow()
-        }
+        self.statusItemController = AppKitStatusItemController(
+            model: model,
+            onOpenControls: { [weak self] in
+                self?.toggleControlsWindow()
+            },
+            onBeginExpandedInterface: { [weak self] in
+                self?.showControlsWindow()
+            },
+            onEndExpandedInterface: { [weak self] in
+                self?.closeControlsWindow()
+            }
+        )
         self.visibilityAnchorController = AppKitVisibilityAnchorController(model: model) { [weak self] in
             self?.toggleControlsWindow()
         }
