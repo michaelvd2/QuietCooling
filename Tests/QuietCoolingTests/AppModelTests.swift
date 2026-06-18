@@ -215,6 +215,27 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testRPMMarkerStaysOnMacOSBaselineWhenQuietCoolingRaisesFanFloor() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.tick()
+        let macOSBaseline = model.rpmControlBaseline
+        model.setTemporaryTestRPM(macOSBaseline + 1_000)
+
+        model.setTemporaryFanTestActive(true)
+
+        XCTAssertGreaterThan(model.fanRPM ?? 0, macOSBaseline)
+        XCTAssertEqual(model.currentRPMMarker, macOSBaseline)
+    }
+
+    @MainActor
     func testTemporaryFanTestToggleDoesNotMoveSelectedRPMBelowCurrentLine() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }

@@ -162,7 +162,7 @@ final class AppModel: ObservableObject {
     }
 
     var currentRPMMarker: Int? {
-        fanRPM
+        observedSystemBaselineRPM ?? fanRPM
     }
 
     var likelyAudibleQuietCeilingRPM: Int? {

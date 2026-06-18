@@ -357,7 +357,7 @@ private struct TemporaryFanTestControl: View {
                 Text("Min \(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.lowerBound)))")
                 Spacer()
                 if let markerRPM = model.currentRPMMarker {
-                    Text("Current \(DisplayFormatters.fanRPM(markerRPM))")
+                    Text("System \(DisplayFormatters.fanRPM(markerRPM))")
                     Spacer()
                 }
                 Text(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.upperBound)))
@@ -452,7 +452,7 @@ private struct RPMControlShell: View {
                 Text(lowerLabel)
                 Spacer()
                 if let markerRPM {
-                    Text("Current \(DisplayFormatters.fanRPM(markerRPM))")
+                    Text("System \(DisplayFormatters.fanRPM(markerRPM))")
                     Spacer()
                 }
                 Text(DisplayFormatters.fanRPM(Int(range.upperBound)))
