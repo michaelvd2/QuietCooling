@@ -5,6 +5,7 @@ import SwiftUI
 final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
     private let model: AppModel
     private var window: NSWindow?
+    private var hostingController: NSHostingController<AnyView>?
     private var appDeactivationObserver: NSObjectProtocol?
 
     init(model: AppModel) {
@@ -26,6 +27,14 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
 
     var windowFrame: NSRect {
         window?.frame ?? .zero
+    }
+
+    var contentFittingSize: NSSize {
+        window?.contentView?.fittingSize ?? .zero
+    }
+
+    var hostingSizingOptions: NSHostingSizingOptions? {
+        hostingController?.sizingOptions
     }
 
     var windowLevel: NSWindow.Level {
@@ -70,6 +79,11 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         window?.delegate = nil
         window?.close()
         window = nil
+        hostingController = nil
+    }
+
+    func layoutIfNeeded() {
+        window?.contentView?.layoutSubtreeIfNeeded()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -82,9 +96,13 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let hostingController = NSHostingController(
-            rootView: QuietCoolingPopoverView(model: model)
-                .frame(width: 360)
+            rootView: AnyView(
+                QuietCoolingPopoverView(model: model)
+                    .frame(width: 360)
+            )
         )
+        hostingController.sizingOptions = []
+        self.hostingController = hostingController
 
         let controlsWindow = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 380, height: 540),

@@ -16,6 +16,25 @@ final class AppKitControlsWindowControllerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(controller.windowSize.height, 480)
     }
 
+    func testCustomPreCoolingLayoutFitsInsideControlsWindowBeforeSwitchingStrength() {
+        let model = AppModel.demo()
+        model.preCoolingStrength = .custom
+        let controller = AppKitControlsWindowController(model: model)
+
+        controller.show()
+        defer { controller.close() }
+
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(controller.hostingSizingOptions, [])
+        XCTAssertGreaterThanOrEqual(controller.windowSize.height + 1, controller.contentFittingSize.height)
+
+        model.preCoolingStrength = .strong
+        controller.layoutIfNeeded()
+
+        XCTAssertTrue(controller.isVisible)
+    }
+
     func testShowCreatesFloatingControlsWindowAvailableAcrossSpaces() {
         let model = AppModel.demo()
         let controller = AppKitControlsWindowController(model: model)
