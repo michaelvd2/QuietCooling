@@ -461,14 +461,11 @@ final class AppModel: ObservableObject {
             return
         }
 
-        guard let lastAppliedTargetRPM else {
-            observedSystemBaselineRPM = currentRPM
+        guard lastAppliedTargetRPM == nil else {
             return
         }
 
-        if currentRPM >= lastAppliedTargetRPM + CoolingPolicyConfiguration.defaults.minimumManualBoostRPM {
-            observedSystemBaselineRPM = currentRPM
-        }
+        observedSystemBaselineRPM = currentRPM
     }
 
 }

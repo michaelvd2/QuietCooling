@@ -236,6 +236,29 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testRPMMarkerIgnoresActualRPMOvershootFromPreviousTemporaryTestFloor() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_400)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 54)
+        )
+
+        model.tick()
+        let macOSBaseline = model.rpmControlBaseline
+        model.setTemporaryTestRPM(2_400)
+        model.setTemporaryFanTestActive(true)
+        fanController.currentRPM = 2_500
+
+        model.setTemporaryTestRPM(3_000)
+
+        XCTAssertEqual(model.currentRPMMarker, macOSBaseline)
+        XCTAssertEqual(model.status, .temporaryTest(targetRPM: 3_000))
+    }
+
+    @MainActor
     func testRPMMarkerStaysOnMacOSBaselineWhenManualModeRaisesFanFloor() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
