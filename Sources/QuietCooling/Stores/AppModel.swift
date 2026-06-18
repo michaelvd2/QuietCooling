@@ -76,6 +76,7 @@ final class AppModel: ObservableObject {
     private let mockSensorProvider: MockThermalSensorProvider?
     private var timer: Timer?
     private var lastAppliedTargetRPM: Int?
+    private var lastAppliedFanIDs: Set<Fan.ID> = []
     private var observedSystemBaselineRPM: Int?
 
     init(
@@ -163,6 +164,27 @@ final class AppModel: ObservableObject {
 
     var currentRPMMarker: Int? {
         observedSystemBaselineRPM ?? fanRPM
+    }
+
+    var isFanRampingToAppliedTarget: Bool {
+        guard let fanRPM,
+              let lastAppliedTargetRPM
+        else {
+            return false
+        }
+
+        return fanRPM < lastAppliedTargetRPM - CoolingPolicyConfiguration.defaults.minimumManualBoostRPM
+    }
+
+    var fanTargetProgressText: String? {
+        guard isFanRampingToAppliedTarget,
+              let fanRPM,
+              let lastAppliedTargetRPM
+        else {
+            return nil
+        }
+
+        return "Actual \(DisplayFormatters.fanRPM(fanRPM)) -> Target \(DisplayFormatters.fanRPM(lastAppliedTargetRPM))"
     }
 
     var likelyAudibleQuietCeilingRPM: Int? {
@@ -253,6 +275,7 @@ final class AppModel: ObservableObject {
         timer = nil
         fanController.releaseAllFans()
         lastAppliedTargetRPM = nil
+        lastAppliedFanIDs = []
         (sensorProvider as? HardwareBackendStoppable)?.stop()
     }
 
@@ -373,12 +396,17 @@ final class AppModel: ObservableObject {
                     try fanController.releaseFanControl(fanID: fan.id)
                 }
                 lastAppliedTargetRPM = nil
+                lastAppliedFanIDs = []
             case .setMinimumRPM(let rpm):
-                for fan in fans {
-                    let range = try fanController.readFanMinMax(fanID: fan.id)
-                    try fanController.setFanMinimumRPM(fanID: fan.id, rpm: range.clamped(rpm))
+                let fanIDs = Set(fans.map(\.id))
+                if lastAppliedTargetRPM != rpm || lastAppliedFanIDs != fanIDs {
+                    for fan in fans {
+                        let range = try fanController.readFanMinMax(fanID: fan.id)
+                        try fanController.setFanMinimumRPM(fanID: fan.id, rpm: range.clamped(rpm))
+                    }
                 }
                 lastAppliedTargetRPM = rpm
+                lastAppliedFanIDs = fanIDs
             }
 
             status = decision.status

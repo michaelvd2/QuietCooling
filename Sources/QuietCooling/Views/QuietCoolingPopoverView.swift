@@ -364,6 +364,13 @@ private struct TemporaryFanTestControl: View {
             }
             .font(.caption2)
             .foregroundStyle(.tertiary)
+
+            if let progressText = model.fanTargetProgressText {
+                Text(progressText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
         }
     }
 }

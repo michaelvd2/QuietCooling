@@ -236,6 +236,50 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testTemporaryFanTestDoesNotRewriteSameAppliedFloorOnEveryTick() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_400)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 54)
+        )
+
+        model.tick()
+        fanController.setMinimumRPMCalls.removeAll()
+        model.setTemporaryTestRPM(2_400)
+        model.setTemporaryFanTestActive(true)
+
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [2_400])
+
+        model.tick()
+        model.tick()
+
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [2_400])
+    }
+
+    @MainActor
+    func testFanRampProgressShowsActualAndTargetWhileFanCatchesUp() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_400)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 54)
+        )
+
+        model.tick()
+        model.setTemporaryTestRPM(2_400)
+
+        model.setTemporaryFanTestActive(true)
+
+        XCTAssertTrue(model.isFanRampingToAppliedTarget)
+        XCTAssertEqual(model.fanTargetProgressText, "Actual 1,400 RPM -> Target 2,400 RPM")
+    }
+
+    @MainActor
     func testTemporaryFanTestToggleDoesNotMoveSelectedRPMBelowCurrentLine() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
@@ -359,5 +403,51 @@ private final class RecordingHelperServiceManager: HelperServiceManaging {
 
     func unregister() throws {
         currentStatus = .notRegistered
+    }
+}
+
+private final class RecordingFanController: FanControllerProtocol {
+    let backendName = "Recording fan"
+    let isMockBackend = false
+    var currentRPM: Int
+    var setMinimumRPMCalls: [Int] = []
+    var releaseCallCount = 0
+
+    private let fan = Fan(
+        id: "fan-0",
+        name: "Fan 1",
+        range: FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
+    )
+
+    init(currentRPM: Int) {
+        self.currentRPM = currentRPM
+    }
+
+    func listFans() throws -> [Fan] {
+        [fan]
+    }
+
+    func readFanRPM(fanID: Fan.ID) throws -> Int {
+        currentRPM
+    }
+
+    func readFanMinMax(fanID: Fan.ID) throws -> FanRange {
+        fan.range
+    }
+
+    func setFanMinimumRPM(fanID: Fan.ID, rpm: Int) throws {
+        setMinimumRPMCalls.append(rpm)
+    }
+
+    func releaseFanControl(fanID: Fan.ID) throws {
+        releaseCallCount += 1
+    }
+
+    func canControlFans() -> Bool {
+        true
+    }
+
+    func controlLimitationReason() -> String? {
+        nil
     }
 }
