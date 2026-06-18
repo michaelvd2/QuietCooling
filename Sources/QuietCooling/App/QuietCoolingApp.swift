@@ -119,6 +119,9 @@ struct QuietCoolingApp: App {
         if CommandLine.arguments.contains("--diagnose-helper") {
             Darwin.exit(Int32(HelperDiagnostics.run()))
         }
+        if let launchAtLoginExitCode = LaunchAtLoginCommand.runIfRequested(arguments: CommandLine.arguments) {
+            Darwin.exit(Int32(launchAtLoginExitCode))
+        }
 
         let appModel = AppModel(hardwareBackend: HardwareBackendFactory.makeDefault())
         QuietCoolingRuntime.shared.configure(model: appModel)
@@ -128,6 +131,38 @@ struct QuietCoolingApp: App {
         Settings {
             EmptyView()
         }
+    }
+}
+
+private enum LaunchAtLoginCommand {
+    static func runIfRequested(arguments: [String]) -> Int? {
+        guard let enabled = requestedState(arguments: arguments) else {
+            return nil
+        }
+
+        do {
+            try LoginItemManager().setLaunchAtLogin(enabled)
+            let store = PreferencesStore.standardStore()
+            var preferences = store.load()
+            preferences.launchAtLogin = enabled
+            store.save(preferences)
+            print("launchAtLogin=\(enabled ? "enabled" : "disabled")")
+            print("bundle.path=\(Bundle.main.bundlePath)")
+            return 0
+        } catch {
+            fputs("launchAtLogin.error=\(error.localizedDescription)\n", stderr)
+            return 1
+        }
+    }
+
+    private static func requestedState(arguments: [String]) -> Bool? {
+        if arguments.contains("--enable-launch-at-login") {
+            return true
+        }
+        if arguments.contains("--disable-launch-at-login") {
+            return false
+        }
+        return nil
     }
 }
 
