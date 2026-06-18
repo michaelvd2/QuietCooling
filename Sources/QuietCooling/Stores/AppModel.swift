@@ -153,11 +153,7 @@ final class AppModel: ObservableObject {
     }
 
     var quietCeilingRange: ClosedRange<Double> {
-        guard let range = fans.first?.range else {
-            return 1_200...3_000
-        }
-
-        return Double(range.minimumRPM)...Double(min(range.maximumRPM, 3_000))
+        rpmControlRange()
     }
 
     var rpmControlBaseline: Int {
@@ -167,6 +163,20 @@ final class AppModel: ObservableObject {
 
     var currentRPMMarker: Int? {
         fanRPM
+    }
+
+    var likelyAudibleQuietCeilingRPM: Int? {
+        let range = fans.first?.range ?? FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
+        let thresholdRPM = range.clamped(3_000)
+        guard thresholdRPM > range.minimumRPM, thresholdRPM < range.maximumRPM else {
+            return nil
+        }
+
+        return thresholdRPM
+    }
+
+    var quietCeilingRPMForControls: Int {
+        clampedControlRPM(quietCeilingRPM)
     }
 
     var manualRPMRange: ClosedRange<Double> {
@@ -203,6 +213,10 @@ final class AppModel: ObservableObject {
 
     func setSelectedMode(_ mode: CoolingMode) {
         selectedMode = mode
+    }
+
+    func setQuietCeilingRPM(_ rpm: Int) {
+        quietCeilingRPM = clampedControlRPM(rpm)
     }
 
     func setManualTargetRPM(_ rpm: Int) {

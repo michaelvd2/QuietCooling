@@ -111,6 +111,46 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testQuietCeilingUsesFullHardwareScaleWithLikelyAudibleMarker() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.tick()
+
+        XCTAssertEqual(model.quietCeilingRange, model.manualRPMRange)
+        XCTAssertEqual(model.likelyAudibleQuietCeilingRPM, 3_000)
+
+        model.setQuietCeilingRPM(5_700)
+
+        XCTAssertEqual(model.quietCeilingRPMForControls, 5_700)
+        XCTAssertEqual(fixture.store.load().quietCeilingRPM, 5_700)
+    }
+
+    @MainActor
+    func testQuietCeilingClampsToHardwareRangeForControls() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.tick()
+
+        model.setQuietCeilingRPM(7_000)
+        XCTAssertEqual(model.quietCeilingRPMForControls, 6_200)
+        XCTAssertEqual(fixture.store.load().quietCeilingRPM, 6_200)
+    }
+
+    @MainActor
     func testCustomPreCoolingCeilingUsesSameScaleAsTemporaryTestSlider() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }

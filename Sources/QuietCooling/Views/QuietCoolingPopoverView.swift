@@ -209,7 +209,7 @@ private struct QuietCeilingControl: View {
             HStack {
                 Label("Quiet ceiling", systemImage: "dial.low")
                 Spacer()
-                Text(DisplayFormatters.fanRPM(model.quietCeilingRPM))
+                Text(DisplayFormatters.fanRPM(model.quietCeilingRPMForControls))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -217,17 +217,27 @@ private struct QuietCeilingControl: View {
 
             Slider(
                 value: Binding(
-                    get: { Double(model.quietCeilingRPM) },
-                    set: { model.quietCeilingRPM = Int(($0 / 50).rounded() * 50) }
+                    get: { Double(model.quietCeilingRPMForControls) },
+                    set: { model.setQuietCeilingRPM(Int(($0 / 50).rounded() * 50)) }
                 ),
                 in: model.quietCeilingRange,
                 step: 50
             )
             .disabled(!model.canAdjustControls)
+            .overlay {
+                RPMMarkerLine(
+                    range: model.quietCeilingRange,
+                    markerRPM: model.likelyAudibleQuietCeilingRPM
+                )
+            }
 
             HStack {
-                Text(DisplayFormatters.fanRPM(Int(model.quietCeilingRange.lowerBound)))
+                Text("Min \(DisplayFormatters.fanRPM(Int(model.quietCeilingRange.lowerBound)))")
                 Spacer()
+                if model.likelyAudibleQuietCeilingRPM != nil {
+                    Text("Likely audible")
+                    Spacer()
+                }
                 Text(DisplayFormatters.fanRPM(Int(model.quietCeilingRange.upperBound)))
             }
             .font(.caption2)
