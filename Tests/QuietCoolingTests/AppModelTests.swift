@@ -236,6 +236,26 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testRPMMarkerStaysOnMacOSBaselineWhenManualModeRaisesFanFloor() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.tick()
+        let macOSBaseline = model.rpmControlBaseline
+        model.setSelectedMode(.manual)
+        model.setManualTargetRPM(macOSBaseline + 1_000)
+
+        XCTAssertGreaterThan(model.fanRPM ?? 0, macOSBaseline)
+        XCTAssertEqual(model.currentRPMMarker, macOSBaseline)
+    }
+
+    @MainActor
     func testTemporaryFanTestDoesNotRewriteSameAppliedFloorOnEveryTick() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
