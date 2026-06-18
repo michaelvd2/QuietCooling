@@ -111,6 +111,24 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCustomPreCoolingCeilingUsesSameScaleAsTemporaryTestSlider() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.tick()
+
+        XCTAssertEqual(model.customPreCoolingCeilingRange, model.temporaryTestRPMRange)
+        XCTAssertEqual(model.customPreCoolingCeilingRange.lowerBound, model.manualRPMRange.lowerBound)
+        XCTAssertEqual(model.customPreCoolingCeilingRange.upperBound, model.manualRPMRange.upperBound)
+    }
+
+    @MainActor
     func testTemporaryFanTestOverridesModeWithoutPersisting() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
@@ -131,6 +149,59 @@ final class AppModelTests: XCTestCase {
         model.setTemporaryFanTestActive(false)
 
         XCTAssertEqual(model.status, .followingMacOS)
+    }
+
+    @MainActor
+    func testTemporaryFanTestActivatesWithActionableBoostAboveSystemBaseline() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment()
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.tick()
+        let baseline = model.rpmControlBaseline
+        model.setTemporaryTestRPM(baseline)
+
+        model.setTemporaryFanTestActive(true)
+
+        let expectedTarget = Int((Double(baseline + 250) / 50).rounded() * 50)
+        XCTAssertEqual(model.status, .temporaryTest(targetRPM: expectedTarget))
+        XCTAssertEqual(model.temporaryTestRPMForControls, expectedTarget)
+        XCTAssertGreaterThan(model.fanRPM ?? 0, baseline)
+    }
+
+    @MainActor
+    func testManualAndTemporaryTargetsCanSitBelowCurrentRPMWithoutApplyingFloor() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let environment = MockHardwareEnvironment(scenario: .systemAboveQuiet)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: MockFanController(environment: environment),
+            sensorProvider: MockThermalSensorProvider(environment: environment)
+        )
+
+        model.tick()
+        let currentRPM = model.fanRPM ?? 0
+        let belowCurrentRPM = currentRPM - 500
+
+        model.setSelectedMode(.manual)
+        model.setManualTargetRPM(belowCurrentRPM)
+
+        XCTAssertEqual(model.manualTargetRPMForControls, belowCurrentRPM)
+        XCTAssertEqual(model.status, .followingMacOS)
+        XCTAssertEqual(model.fanRPM, currentRPM)
+
+        model.setTemporaryFanTestActive(true)
+        model.setTemporaryTestRPM(belowCurrentRPM)
+
+        XCTAssertEqual(model.temporaryTestRPMForControls, belowCurrentRPM)
+        XCTAssertEqual(model.status, .followingMacOS)
+        XCTAssertEqual(model.fanRPM, currentRPM)
     }
 
     @MainActor

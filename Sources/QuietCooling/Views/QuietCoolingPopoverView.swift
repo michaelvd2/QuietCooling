@@ -245,8 +245,10 @@ private struct ManualRPMControl: View {
             systemImage: "dial.high",
             value: Double(model.manualTargetRPMForControls),
             range: model.manualRPMRange,
-            lowerLabel: "System \(DisplayFormatters.fanRPM(model.rpmControlBaseline))",
+            lowerLabel: "Min \(DisplayFormatters.fanRPM(Int(model.manualRPMRange.lowerBound)))",
+            markerRPM: model.currentRPMMarker,
             isEnabled: model.canAdjustControls,
+            commitsContinuously: true,
             onCommit: { model.setManualTargetRPM(Int($0)) }
         )
     }
@@ -262,6 +264,7 @@ private struct CustomPreCoolingCeilingControl: View {
             value: Double(model.customPreCoolingCeilingRPMForControls),
             range: model.customPreCoolingCeilingRange,
             lowerLabel: "Min \(DisplayFormatters.fanRPM(Int(model.customPreCoolingCeilingRange.lowerBound)))",
+            markerRPM: model.currentRPMMarker,
             isEnabled: model.canAdjustControls,
             onCommit: { model.setCustomPreCoolingCeilingRPM(Int($0)) }
         )
@@ -311,6 +314,9 @@ private struct TemporaryFanTestControl: View {
                             dragBuffer.beginEditing()
                         }
                         dragBuffer.updateDraftValue(newValue)
+                        if model.isTemporaryFanTestActive {
+                            model.setTemporaryTestRPM(Int(newValue))
+                        }
                     }
                 ),
                 in: model.temporaryTestRPMRange,
@@ -330,10 +336,20 @@ private struct TemporaryFanTestControl: View {
             .onChange(of: externalValue) { _, newValue in
                 dragBuffer.updateExternalValue(newValue)
             }
+            .overlay {
+                RPMMarkerLine(
+                    range: model.temporaryTestRPMRange,
+                    markerRPM: model.currentRPMMarker
+                )
+            }
 
             HStack {
-                Text("System \(DisplayFormatters.fanRPM(model.rpmControlBaseline))")
+                Text("Min \(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.lowerBound)))")
                 Spacer()
+                if let markerRPM = model.currentRPMMarker {
+                    Text("Current \(DisplayFormatters.fanRPM(markerRPM))")
+                    Spacer()
+                }
                 Text(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.upperBound)))
             }
             .font(.caption2)
@@ -348,7 +364,9 @@ private struct RPMControlShell: View {
     var value: Double
     var range: ClosedRange<Double>
     var lowerLabel: String
+    var markerRPM: Int?
     var isEnabled: Bool
+    var commitsContinuously: Bool
     var onCommit: (Double) -> Void
     @State private var dragBuffer: RPMSliderDragBuffer
 
@@ -358,7 +376,9 @@ private struct RPMControlShell: View {
         value: Double,
         range: ClosedRange<Double>,
         lowerLabel: String,
+        markerRPM: Int?,
         isEnabled: Bool,
+        commitsContinuously: Bool = false,
         onCommit: @escaping (Double) -> Void
     ) {
         self.label = label
@@ -366,7 +386,9 @@ private struct RPMControlShell: View {
         self.value = value
         self.range = range
         self.lowerLabel = lowerLabel
+        self.markerRPM = markerRPM
         self.isEnabled = isEnabled
+        self.commitsContinuously = commitsContinuously
         self.onCommit = onCommit
         self._dragBuffer = State(initialValue: RPMSliderDragBuffer(value: value))
     }
@@ -390,6 +412,9 @@ private struct RPMControlShell: View {
                             dragBuffer.beginEditing()
                         }
                         dragBuffer.updateDraftValue(newValue)
+                        if commitsContinuously {
+                            onCommit(newValue)
+                        }
                     }
                 ),
                 in: range,
@@ -409,15 +434,45 @@ private struct RPMControlShell: View {
             .onChange(of: value) { _, newValue in
                 dragBuffer.updateExternalValue(newValue)
             }
+            .overlay {
+                RPMMarkerLine(range: range, markerRPM: markerRPM)
+            }
 
             HStack {
                 Text(lowerLabel)
                 Spacer()
+                if let markerRPM {
+                    Text("Current \(DisplayFormatters.fanRPM(markerRPM))")
+                    Spacer()
+                }
                 Text(DisplayFormatters.fanRPM(Int(range.upperBound)))
             }
             .font(.caption2)
             .foregroundStyle(.tertiary)
         }
+    }
+}
+
+private struct RPMMarkerLine: View {
+    var range: ClosedRange<Double>
+    var markerRPM: Int?
+
+    var body: some View {
+        GeometryReader { geometry in
+            if let markerRPM, range.upperBound > range.lowerBound {
+                let normalized = min(
+                    max((Double(markerRPM) - range.lowerBound) / (range.upperBound - range.lowerBound), 0),
+                    1
+                )
+
+                Rectangle()
+                    .fill(Color.primary.opacity(0.55))
+                    .frame(width: 1, height: 18)
+                    .offset(x: normalized * geometry.size.width)
+                    .accessibilityHidden(true)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
