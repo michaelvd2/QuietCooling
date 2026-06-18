@@ -349,14 +349,14 @@ private struct TemporaryFanTestControl: View {
             .overlay {
                 RPMMarkerLine(
                     range: model.temporaryTestRPMRange,
-                    markerRPM: model.currentRPMMarker
+                    markerRPM: model.temporaryTestRPMMarker
                 )
             }
 
             HStack {
                 Text("Min \(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.lowerBound)))")
                 Spacer()
-                if let markerRPM = model.currentRPMMarker {
+                if let markerRPM = model.temporaryTestRPMMarker {
                     Text("System \(DisplayFormatters.fanRPM(markerRPM))")
                     Spacer()
                 }

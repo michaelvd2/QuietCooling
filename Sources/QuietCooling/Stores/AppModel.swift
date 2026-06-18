@@ -78,6 +78,7 @@ final class AppModel: ObservableObject {
     private var lastAppliedTargetRPM: Int?
     private var lastAppliedFanIDs: Set<Fan.ID> = []
     private var observedSystemBaselineRPM: Int?
+    private var temporaryTestBaselineRPM: Int?
 
     init(
         preferencesStore: PreferencesStore = .standardStore(),
@@ -164,6 +165,10 @@ final class AppModel: ObservableObject {
 
     var currentRPMMarker: Int? {
         observedSystemBaselineRPM ?? fanRPM
+    }
+
+    var temporaryTestRPMMarker: Int? {
+        temporaryTestBaselineRPM ?? currentRPMMarker
     }
 
     var isFanRampingToAppliedTarget: Bool {
@@ -254,6 +259,11 @@ final class AppModel: ObservableObject {
     }
 
     func setTemporaryFanTestActive(_ active: Bool) {
+        if active && !isTemporaryFanTestActive {
+            temporaryTestBaselineRPM = currentRPMMarker ?? rpmControlBaseline
+        } else if !active {
+            temporaryTestBaselineRPM = nil
+        }
         isTemporaryFanTestActive = active
     }
 
@@ -340,6 +350,7 @@ final class AppModel: ObservableObject {
         manualTargetRPM = defaults.manualTargetRPM
         customPreCoolingCeilingRPM = defaults.customPreCoolingCeilingRPM
         temporaryTestRPM = max(defaults.manualTargetRPM, 3_200)
+        temporaryTestBaselineRPM = nil
         isTemporaryFanTestActive = false
         preCoolingStrength = defaults.preCoolingStrength
         launchAtLogin = defaults.launchAtLogin
@@ -461,11 +472,14 @@ final class AppModel: ObservableObject {
             return
         }
 
-        guard lastAppliedTargetRPM == nil else {
+        guard let lastAppliedTargetRPM else {
+            observedSystemBaselineRPM = currentRPM
             return
         }
 
-        observedSystemBaselineRPM = currentRPM
+        if currentRPM >= lastAppliedTargetRPM + CoolingPolicyConfiguration.defaults.minimumManualBoostRPM {
+            observedSystemBaselineRPM = currentRPM
+        }
     }
 
 }

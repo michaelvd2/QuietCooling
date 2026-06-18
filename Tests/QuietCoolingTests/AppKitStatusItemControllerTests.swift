@@ -13,10 +13,27 @@ final class AppKitStatusItemControllerTests: XCTestCase {
         XCTAssertTrue(controller.isInstalled)
         XCTAssertNotNil(controller.buttonImage)
         XCTAssertEqual(controller.buttonTitle, "")
-        XCTAssertEqual(controller.statusItemLength, NSStatusItem.variableLength)
-        XCTAssertEqual(controller.autosaveName, "QuietCoolingStatusItemV2")
+        XCTAssertEqual(controller.statusItemLength, AppKitStatusItemController.visibleItemLength)
+        XCTAssertEqual(controller.autosaveName, AppKitStatusItemController.autosaveName)
         XCTAssertEqual(controller.tooltip, model.menuBarTooltip)
         XCTAssertNotNil(controller.anchorFrame)
+    }
+
+    func testStatusItemFrameRequiresTopBandPlacement() {
+        let screenFrame = NSRect(x: 0, y: 0, width: 1_512, height: 982)
+
+        XCTAssertFalse(
+            AppKitStatusItemController.isPlausibleStatusItemFrame(
+                NSRect(x: 9, y: -11, width: 30, height: 22),
+                screenFrames: [screenFrame]
+            )
+        )
+        XCTAssertTrue(
+            AppKitStatusItemController.isPlausibleStatusItemFrame(
+                NSRect(x: 1_200, y: 960, width: 30, height: 22),
+                screenFrames: [screenFrame]
+            )
+        )
     }
 
     func testPressRequestsControlsWindow() {
