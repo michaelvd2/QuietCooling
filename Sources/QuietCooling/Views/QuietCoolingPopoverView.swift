@@ -142,7 +142,7 @@ private struct StatusPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             MetricRow(label: "Mode", value: model.selectedMode.title, systemImage: "slider.horizontal.3")
-            MetricRow(label: "Fan", value: DisplayFormatters.fanRPM(model.fanRPM), systemImage: "fan")
+            MetricRow(label: "Actual fan", value: DisplayFormatters.fanRPM(model.fanRPM), systemImage: "fan")
             MetricRow(label: "Temp", value: DisplayFormatters.temperature(model.temperatureC), systemImage: "thermometer.medium")
             MetricRow(label: "Status", value: model.status.displayText, systemImage: "waveform.path.ecg")
             MetricRow(label: "Helper", value: model.helperInstallStatus.displayText, systemImage: "lock.shield")
@@ -178,7 +178,7 @@ private struct MetricRow: View {
                 .frame(width: 16)
             Text(label)
                 .foregroundStyle(.secondary)
-                .frame(width: 48, alignment: .leading)
+                .frame(width: 72, alignment: .leading)
             Text(value)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -357,7 +357,9 @@ private struct TemporaryFanTestControl: View {
                 Text("Min \(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.lowerBound)))")
                 Spacer()
                 if let markerRPM = model.temporaryTestRPMMarker {
-                    Text("System \(DisplayFormatters.fanRPM(markerRPM))")
+                    Text(DisplayFormatters.macOSBaselineRPM(markerRPM))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.76)
                     Spacer()
                 }
                 Text(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.upperBound)))
@@ -459,7 +461,9 @@ private struct RPMControlShell: View {
                 Text(lowerLabel)
                 Spacer()
                 if let markerRPM {
-                    Text("System \(DisplayFormatters.fanRPM(markerRPM))")
+                    Text(DisplayFormatters.macOSBaselineRPM(markerRPM))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.76)
                     Spacer()
                 }
                 Text(DisplayFormatters.fanRPM(Int(range.upperBound)))

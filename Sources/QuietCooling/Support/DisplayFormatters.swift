@@ -12,6 +12,22 @@ enum DisplayFormatters {
         return "\(value) RPM"
     }
 
+    static func actualFanRPM(_ rpm: Int?) -> String {
+        guard let rpm else {
+            return "Actual fan unavailable"
+        }
+
+        return "Actual fan \(fanRPM(rpm))"
+    }
+
+    static func macOSBaselineRPM(_ rpm: Int?) -> String {
+        guard let rpm else {
+            return "macOS asks unavailable"
+        }
+
+        return "macOS asks \(fanRPM(rpm))"
+    }
+
     static func temperature(_ temperatureC: Double?) -> String {
         guard let temperatureC else {
             return "Unavailable"
