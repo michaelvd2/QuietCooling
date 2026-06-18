@@ -37,6 +37,7 @@ final class QuietCoolingRuntime {
 
     private var model: AppModel?
     private var statusItemController: AppKitStatusItemController?
+    private var visibilityAnchorController: AppKitVisibilityAnchorController?
     private var controlsWindowController: AppKitControlsWindowController?
 
     func configure(model: AppModel) {
@@ -45,11 +46,18 @@ final class QuietCoolingRuntime {
         self.statusItemController = AppKitStatusItemController(model: model) { [weak self] in
             self?.toggleControlsWindow()
         }
+        self.visibilityAnchorController = AppKitVisibilityAnchorController(model: model) { [weak self] in
+            self?.toggleControlsWindow()
+        }
     }
 
     func start() {
         statusItemController?.install()
         model?.start()
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            self?.ensureVisibleMenuBarControl()
+        }
     }
 
     func showControlsWindow() {
@@ -66,12 +74,31 @@ final class QuietCoolingRuntime {
 
     func stop() {
         statusItemController?.remove()
+        visibilityAnchorController?.close()
         controlsWindowController?.close()
         model?.stopAndRelease()
     }
 
     private var controlsAnchorFrame: NSRect? {
-        statusItemController?.anchorFrame
+        if visibilityAnchorController?.isVisible == true {
+            return visibilityAnchorController?.panelFrame
+        }
+        return statusItemController?.anchorFrame
+    }
+
+    private func ensureVisibleMenuBarControl() {
+        guard let anchorFrame = statusItemController?.anchorFrame,
+              AppKitStatusItemController.isUsableMenuBarFrame(
+                  anchorFrame,
+                  screenFrames: NSScreen.screens.map(\.frame)
+              )
+        else {
+            statusItemController?.remove()
+            visibilityAnchorController?.show()
+            return
+        }
+
+        visibilityAnchorController?.close()
     }
 }
 

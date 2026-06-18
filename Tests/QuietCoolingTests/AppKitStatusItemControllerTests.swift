@@ -13,25 +13,34 @@ final class AppKitStatusItemControllerTests: XCTestCase {
         XCTAssertTrue(controller.isInstalled)
         XCTAssertNotNil(controller.buttonImage)
         XCTAssertEqual(controller.buttonTitle, "")
-        XCTAssertEqual(controller.statusItemLength, AppKitStatusItemController.visibleItemLength)
-        XCTAssertEqual(controller.autosaveName, AppKitStatusItemController.autosaveName)
+        XCTAssertEqual(controller.statusItemLength, NSStatusItem.variableLength)
+        XCTAssertEqual(controller.autosaveName, "QuietCoolingStatusItemV2")
         XCTAssertEqual(controller.tooltip, model.menuBarTooltip)
         XCTAssertNotNil(controller.anchorFrame)
     }
 
-    func testStatusItemFrameRequiresTopBandPlacement() {
-        let screenFrame = NSRect(x: 0, y: 0, width: 1_512, height: 982)
+    func testFrameVisibilityRejectsObservedClippedMenuBarFrames() {
+        let screens = [
+            NSRect(x: 0, y: 0, width: 2_048, height: 1_152),
+            NSRect(x: 2_048, y: 0, width: 2_048, height: 1_152)
+        ]
 
         XCTAssertFalse(
-            AppKitStatusItemController.isPlausibleStatusItemFrame(
-                NSRect(x: 9, y: -11, width: 30, height: 22),
-                screenFrames: [screenFrame]
+            AppKitStatusItemController.isUsableMenuBarFrame(
+                NSRect(x: 4_053, y: -1, width: 44, height: 24),
+                screenFrames: screens
+            )
+        )
+        XCTAssertFalse(
+            AppKitStatusItemController.isUsableMenuBarFrame(
+                NSRect(x: -1, y: 1_144, width: 44, height: 24),
+                screenFrames: screens
             )
         )
         XCTAssertTrue(
-            AppKitStatusItemController.isPlausibleStatusItemFrame(
-                NSRect(x: 1_200, y: 960, width: 30, height: 22),
-                screenFrames: [screenFrame]
+            AppKitStatusItemController.isUsableMenuBarFrame(
+                NSRect(x: 1_217, y: 3, width: 44, height: 24),
+                screenFrames: screens
             )
         )
     }
