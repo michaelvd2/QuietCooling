@@ -232,9 +232,6 @@ final class AppModel: ObservableObject {
     }
 
     func setTemporaryFanTestActive(_ active: Bool) {
-        if active {
-            temporaryTestRPM = actionableTemporaryTestRPM()
-        }
         isTemporaryFanTestActive = active
     }
 
@@ -444,17 +441,6 @@ final class AppModel: ObservableObject {
         if currentRPM >= lastAppliedTargetRPM + CoolingPolicyConfiguration.defaults.minimumManualBoostRPM {
             observedSystemBaselineRPM = currentRPM
         }
-    }
-
-    private func actionableTemporaryTestRPM() -> Int {
-        let range = fans.first?.range ?? FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
-        let baseline = min(rpmControlBaseline, range.maximumRPM)
-        guard baseline < range.maximumRPM else {
-            return range.maximumRPM
-        }
-
-        let minimumAudibleStep = 250
-        return clampedControlRPM(max(temporaryTestRPM, baseline + minimumAudibleStep))
     }
 
 }
