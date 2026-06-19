@@ -47,11 +47,7 @@ final class QuietCoolingRuntime {
             model: model,
             onOpenControls: { [weak self] in
                 self?.toggleControlsWindow()
-            },
-            onBeginExpandedInterface: { [weak self] in
-                self?.toggleControlsWindow()
-            },
-            onEndExpandedInterface: {}
+            }
         )
         self.visibilityAnchorController = AppKitVisibilityAnchorController(model: model) { [weak self] in
             self?.toggleControlsWindow()
