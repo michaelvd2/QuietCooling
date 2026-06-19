@@ -115,6 +115,13 @@ final class AppKitStatusItemControllerTests: XCTestCase {
         XCTAssertFalse(appSource.contains("onEndExpandedInterface: { [weak self] in\n                self?.closeControlsWindow()"))
     }
 
+    func testRuntimeExpandedInterfaceBeginUsesSameToggleAsNormalStatusClick() throws {
+        let appSource = try String(contentsOf: quietCoolingAppURL(), encoding: .utf8)
+
+        XCTAssertTrue(appSource.contains("onBeginExpandedInterface: { [weak self] in\n                self?.toggleControlsWindow()"))
+        XCTAssertFalse(appSource.contains("onBeginExpandedInterface: { [weak self] in\n                self?.showControlsWindow()"))
+    }
+
     private func appKitStatusItemControllerURL() -> URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

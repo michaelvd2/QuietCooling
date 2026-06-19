@@ -49,7 +49,7 @@ final class QuietCoolingRuntime {
                 self?.toggleControlsWindow()
             },
             onBeginExpandedInterface: { [weak self] in
-                self?.showControlsWindow()
+                self?.toggleControlsWindow()
             },
             onEndExpandedInterface: {}
         )
