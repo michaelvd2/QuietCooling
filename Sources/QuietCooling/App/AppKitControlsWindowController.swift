@@ -32,6 +32,10 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         window?.frame ?? .zero
     }
 
+    var windowIdentity: ObjectIdentifier? {
+        window.map(ObjectIdentifier.init)
+    }
+
     var contentFittingSize: NSSize {
         window?.contentView?.fittingSize ?? .zero
     }
@@ -62,11 +66,6 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         controlsWindow.orderFrontRegardless()
         installAppDeactivationObserver()
         activateApp()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            self?.window?.orderFrontRegardless()
-            self?.activateApp()
-        }
     }
 
     func toggle(relativeTo anchorFrame: NSRect? = nil) {
@@ -93,10 +92,7 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
 
     func close() {
         removeAppDeactivationObserver()
-        window?.delegate = nil
-        window?.close()
-        window = nil
-        hostingController = nil
+        window?.orderOut(nil)
     }
 
     func layoutIfNeeded() {
@@ -108,7 +104,7 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
             return
         }
 
-        window = nil
+        removeAppDeactivationObserver()
     }
 
     private func makeWindow() -> NSWindow {

@@ -108,4 +108,36 @@ final class AppKitControlsWindowControllerTests: XCTestCase {
 
         XCTAssertFalse(controller.isVisible)
     }
+
+    func testCloseHidesAndReusesControlsWindowForFastReopen() {
+        let model = AppModel.demo()
+        let controller = AppKitControlsWindowController(model: model)
+
+        controller.show()
+        let firstWindowIdentity = controller.windowIdentity
+
+        controller.close()
+        XCTAssertFalse(controller.isVisible)
+
+        controller.show()
+        defer { controller.close() }
+
+        XCTAssertEqual(controller.windowIdentity, firstWindowIdentity)
+        XCTAssertTrue(controller.isVisible)
+    }
+
+    func testShowDoesNotScheduleDelayedRefocus() throws {
+        let source = try String(contentsOf: controlsWindowControllerURL(), encoding: .utf8)
+
+        XCTAssertFalse(source.contains("asyncAfter(deadline: .now() + 0.2)"))
+        XCTAssertFalse(source.contains("orderFrontRegardless()\\n            self?.activateApp()"))
+    }
+
+    private func controlsWindowControllerURL() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/QuietCooling/App/AppKitControlsWindowController.swift")
+    }
 }
