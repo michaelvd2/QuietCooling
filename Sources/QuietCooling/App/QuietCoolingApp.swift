@@ -46,11 +46,11 @@ final class QuietCoolingRuntime {
         self.statusItemController = AppKitStatusItemController(
             model: model,
             onOpenControls: { [weak self] in
-                self?.toggleControlsWindow()
+                self?.toggleControlsWindowFromStatusItem()
             }
         )
         self.visibilityAnchorController = AppKitVisibilityAnchorController(model: model) { [weak self] in
-            self?.toggleControlsWindow()
+            self?.toggleControlsWindowFromStatusItem()
         }
     }
 
@@ -69,6 +69,10 @@ final class QuietCoolingRuntime {
 
     func toggleControlsWindow() {
         controlsWindowController?.toggle(relativeTo: controlsAnchorFrame)
+    }
+
+    func toggleControlsWindowFromStatusItem() {
+        controlsWindowController?.toggleFromStatusItem(relativeTo: controlsAnchorFrame)
     }
 
     func closeControlsWindow() {

@@ -72,6 +72,31 @@ final class AppKitControlsWindowControllerTests: XCTestCase {
         XCTAssertFalse(controller.isVisible)
     }
 
+    func testStatusItemToggleAfterImmediateDeactivationCloseDoesNotReopen() {
+        let model = AppModel.demo()
+        let controller = AppKitControlsWindowController(model: model)
+
+        controller.show()
+        XCTAssertTrue(controller.isVisible)
+
+        NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        controller.toggleFromStatusItem()
+
+        XCTAssertFalse(controller.isVisible)
+    }
+
+    func testStatusItemToggleCanOpenAfterNormalClosedState() {
+        let model = AppModel.demo()
+        let controller = AppKitControlsWindowController(model: model)
+
+        controller.toggleFromStatusItem()
+        defer { controller.close() }
+
+        XCTAssertTrue(controller.isVisible)
+    }
+
     func testToggleClosesVisibleControlsWindow() {
         let model = AppModel.demo()
         let controller = AppKitControlsWindowController(model: model)

@@ -3,10 +3,13 @@ import SwiftUI
 
 @MainActor
 final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
+    private static let statusItemDeactivationGraceInterval: TimeInterval = 0.35
+
     private let model: AppModel
     private var window: NSWindow?
     private var hostingController: NSHostingController<AnyView>?
     private var appDeactivationObserver: NSObjectProtocol?
+    private var lastDeactivationCloseDate: Date?
 
     init(model: AppModel) {
         self.model = model
@@ -72,6 +75,20 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
         } else {
             show(relativeTo: anchorFrame)
         }
+    }
+
+    func toggleFromStatusItem(relativeTo anchorFrame: NSRect? = nil) {
+        if isVisible {
+            close()
+            return
+        }
+
+        if didCloseForRecentDeactivation {
+            lastDeactivationCloseDate = nil
+            return
+        }
+
+        show(relativeTo: anchorFrame)
     }
 
     func close() {
@@ -151,7 +168,7 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.close()
+                self?.closeFromAppDeactivation()
             }
         }
     }
@@ -161,5 +178,22 @@ final class AppKitControlsWindowController: NSObject, NSWindowDelegate {
             NotificationCenter.default.removeObserver(appDeactivationObserver)
         }
         appDeactivationObserver = nil
+    }
+
+    private func closeFromAppDeactivation() {
+        guard isVisible else {
+            return
+        }
+
+        lastDeactivationCloseDate = Date()
+        close()
+    }
+
+    private var didCloseForRecentDeactivation: Bool {
+        guard let lastDeactivationCloseDate else {
+            return false
+        }
+
+        return Date().timeIntervalSince(lastDeactivationCloseDate) <= Self.statusItemDeactivationGraceInterval
     }
 }

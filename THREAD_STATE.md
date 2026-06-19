@@ -9,10 +9,11 @@
 - Latest UX change: the former Always Quiet mode is now presented as `Steady Quiet Floor` / `Steady`, with a `Quiet floor` slider and no pre-cooling strength control. It keeps a steady floor below the user's quiet limit while macOS can still ask for more cooling.
 - Latest smoothness fix: slider-driven RPM target changes are debounced before touching hardware, active drag buffers no longer reset their draft value when editing starts twice, and the app no longer sends repeated release commands while it is already following macOS.
 - Latest menu-bar click fix: the macOS expanded-interface bridge was removed from the status-item click path. The menu-bar item is now a plain `NSStatusButton` target/action toggle, so repeated clicks are not split between delegate and mouse-up callbacks.
+- Latest close/reopen fix: status-item toggles now account for the case where `NSApplication.didResignActiveNotification` closes the controls window just before the status-item action fires. That click is treated as the close action instead of immediately reopening the window.
 - Installed app: `/Applications/QuietCooling.app`
 - Validation:
-  - `swift test` passed: 100 tests on 2026-06-19 after removing the expanded-interface bridge.
-  - `./script/build_and_run.sh --verify` passed on 2026-06-19 after removing the expanded-interface bridge.
+  - `swift test` passed: 102 tests on 2026-06-19 after the status-item deactivation-toggle fix.
+  - `./script/build_and_run.sh --verify` passed on 2026-06-19 after the status-item deactivation-toggle fix.
   - Relaunch stability check passed: `/Applications/QuietCooling.app/Contents/MacOS/QuietCooling` and `QuietCoolingHelper` both remained running after relaunch.
   - Installed app plist verified: `CFBundleIdentifier=com.mvandijk.QuietCooling.MenuBar`, `LSUIElement=true`.
   - Native status item AX evidence: `pos=1217,3`, `size=44,24`, tooltip/accessibility value `3,677 RPM`.
