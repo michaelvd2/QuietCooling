@@ -23,6 +23,9 @@ struct RPMSliderDragBuffer: Equatable {
     }
 
     mutating func beginEditing() {
+        guard !isEditing else {
+            return
+        }
         isEditing = true
         draftValue = externalValue
     }

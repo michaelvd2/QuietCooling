@@ -10,6 +10,7 @@ final class AppModel: ObservableObject {
     @Published var selectedMode: CoolingMode {
         didSet {
             persistPreferences()
+            cancelPendingControlTick()
             tick()
         }
     }
@@ -17,34 +18,35 @@ final class AppModel: ObservableObject {
     @Published var quietCeilingRPM: Int {
         didSet {
             persistPreferences()
-            tick()
+            scheduleControlTick()
         }
     }
 
     @Published private(set) var manualTargetRPM: Int {
         didSet {
             persistPreferences()
-            tick()
+            scheduleControlTick()
         }
     }
 
     @Published private(set) var customPreCoolingCeilingRPM: Int {
         didSet {
             persistPreferences()
-            tick()
+            scheduleControlTick()
         }
     }
 
     @Published private(set) var temporaryTestRPM: Int {
         didSet {
             if isTemporaryFanTestActive {
-                tick()
+                scheduleControlTick()
             }
         }
     }
 
     @Published private(set) var isTemporaryFanTestActive = false {
         didSet {
+            cancelPendingControlTick()
             tick()
         }
     }
@@ -52,6 +54,7 @@ final class AppModel: ObservableObject {
     @Published var preCoolingStrength: PreCoolingStrength {
         didSet {
             persistPreferences()
+            cancelPendingControlTick()
             tick()
         }
     }
@@ -79,6 +82,7 @@ final class AppModel: ObservableObject {
     private var lastAppliedFanIDs: Set<Fan.ID> = []
     private var observedSystemBaselineRPM: Int?
     private var temporaryTestBaselineRPM: Int?
+    private var pendingControlTickTask: Task<Void, Never>?
 
     init(
         preferencesStore: PreferencesStore = .standardStore(),
@@ -283,6 +287,7 @@ final class AppModel: ObservableObject {
     func stopAndRelease() {
         timer?.invalidate()
         timer = nil
+        cancelPendingControlTick()
         fanController.releaseAllFans()
         lastAppliedTargetRPM = nil
         lastAppliedFanIDs = []
@@ -355,6 +360,7 @@ final class AppModel: ObservableObject {
         preCoolingStrength = defaults.preCoolingStrength
         launchAtLogin = defaults.launchAtLogin
         preferencesStore.save(defaults)
+        cancelPendingControlTick()
         tick()
     }
 
@@ -403,8 +409,10 @@ final class AppModel: ObservableObject {
         do {
             switch decision.command {
             case .release:
-                for fan in fans {
-                    try fanController.releaseFanControl(fanID: fan.id)
+                if lastAppliedTargetRPM != nil || !lastAppliedFanIDs.isEmpty {
+                    for fan in fans {
+                        try fanController.releaseFanControl(fanID: fan.id)
+                    }
                 }
                 lastAppliedTargetRPM = nil
                 lastAppliedFanIDs = []
@@ -484,6 +492,32 @@ final class AppModel: ObservableObject {
                 selectedSensorID: nil
             )
         )
+    }
+
+    private func scheduleControlTick() {
+        pendingControlTickTask?.cancel()
+        pendingControlTickTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else {
+                return
+            }
+            self?.runPendingControlTick()
+        }
+    }
+
+    private func runPendingControlTick() {
+        pendingControlTickTask = nil
+        tick()
+    }
+
+    private func cancelPendingControlTick() {
+        pendingControlTickTask?.cancel()
+        pendingControlTickTask = nil
+    }
+
+    func flushPendingControlTickForTesting() async {
+        cancelPendingControlTick()
+        tick()
     }
 
     private func rpmControlRange() -> ClosedRange<Double> {

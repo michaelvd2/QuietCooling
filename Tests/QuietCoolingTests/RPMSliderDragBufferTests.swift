@@ -21,4 +21,15 @@ final class RPMSliderDragBufferTests: XCTestCase {
 
         XCTAssertEqual(buffer.visibleValue, 3_600)
     }
+
+    func testBeginEditingDoesNotResetActiveDraft() {
+        var buffer = RPMSliderDragBuffer(value: 3_400)
+
+        buffer.beginEditing()
+        buffer.updateDraftValue(4_200)
+        buffer.beginEditing()
+
+        XCTAssertEqual(buffer.visibleValue, 4_200)
+        XCTAssertEqual(buffer.commitEditing(), 4_200)
+    }
 }

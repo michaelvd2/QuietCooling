@@ -169,7 +169,7 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
-    func testTemporaryFanTestOverridesModeWithoutPersisting() {
+    func testTemporaryFanTestOverridesModeWithoutPersisting() async {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
         let environment = MockHardwareEnvironment()
@@ -182,6 +182,7 @@ final class AppModelTests: XCTestCase {
         model.setSelectedMode(.system)
         model.setTemporaryFanTestActive(true)
         model.setTemporaryTestRPM(3_600)
+        await model.flushPendingControlTickForTesting()
 
         XCTAssertEqual(model.status, .temporaryTest(targetRPM: 3_600))
         XCTAssertEqual(fixture.store.load().manualTargetRPM, UserPreferences.defaults.manualTargetRPM)
@@ -236,7 +237,7 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
-    func testTemporaryTestRPMMarkerIgnoresActualRPMOvershootFromPreviousFloor() {
+    func testTemporaryTestRPMMarkerIgnoresActualRPMOvershootFromPreviousFloor() async {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
         let fanController = RecordingFanController(currentRPM: 1_400)
@@ -253,6 +254,7 @@ final class AppModelTests: XCTestCase {
         fanController.currentRPM = 2_500
 
         model.setTemporaryTestRPM(3_000)
+        await model.flushPendingControlTickForTesting()
 
         XCTAssertEqual(model.temporaryTestRPMMarker, macOSBaseline)
         XCTAssertEqual(model.status, .temporaryTest(targetRPM: 3_000))
@@ -303,6 +305,52 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testTemporaryFanTestSliderChangesAreCoalescedBeforeApplyingFloor() async {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_400)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 54)
+        )
+
+        model.tick()
+        model.setTemporaryTestRPM(2_400)
+        model.setTemporaryFanTestActive(true)
+        fanController.setMinimumRPMCalls.removeAll()
+
+        model.setTemporaryTestRPM(2_450)
+        model.setTemporaryTestRPM(2_500)
+        model.setTemporaryTestRPM(2_550)
+
+        XCTAssertEqual(model.temporaryTestRPMForControls, 2_550)
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [])
+
+        await model.flushPendingControlTickForTesting()
+
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [2_550])
+    }
+
+    @MainActor
+    func testFollowingMacOSDoesNotReleaseEveryTickWhenAlreadyReleased() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_400)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 40)
+        )
+
+        model.tick()
+        model.tick()
+        model.tick()
+
+        XCTAssertEqual(fanController.releaseCallCount, 0)
+    }
+
+    @MainActor
     func testFanFloorWriteRechecksLatestRPMBeforeApplyingTarget() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
@@ -326,7 +374,7 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
-    func testFanFloorWriteCanLowerQuietCoolingFloorWithoutGoingBelowMacOSBaseline() {
+    func testFanFloorWriteCanLowerQuietCoolingFloorWithoutGoingBelowMacOSBaseline() async {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }
         let fanController = RecordingFanController(currentRPM: 1_400)
@@ -343,9 +391,10 @@ final class AppModelTests: XCTestCase {
         fanController.currentRPM = 4_000
 
         model.setTemporaryTestRPM(3_000)
+        await model.flushPendingControlTickForTesting()
 
         XCTAssertEqual(fanController.setMinimumRPMCalls, [4_000, 3_000])
-        XCTAssertEqual(fanController.releaseCallCount, 1)
+        XCTAssertEqual(fanController.releaseCallCount, 0)
         XCTAssertEqual(model.status, .temporaryTest(targetRPM: 3_000))
     }
 
