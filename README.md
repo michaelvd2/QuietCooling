@@ -2,6 +2,8 @@
 
 QuietCooling is a small macOS menu bar app for quiet preventive cooling. It may ask the fans to cool more inside the user's quiet range, but it must never suppress macOS thermal protection or prevent the system from cooling harder when needed.
 
+[Project page](https://michaelvd2.github.io/QuietCooling/) · [GitHub repo](https://github.com/michaelvd2/QuietCooling)
+
 ## Current Status
 
 This repo builds a native SwiftUI menu bar app with:
@@ -10,6 +12,7 @@ This repo builds a native SwiftUI menu bar app with:
 - quiet ceiling RPM control
 - manual target RPM control
 - always-visible temporary fan test control
+- pre-bag hard cooling until a configurable target temperature
 - pre-cooling strength control
 - compact menu bar fan/temperature badge with live RPM tooltip
 - persisted settings
