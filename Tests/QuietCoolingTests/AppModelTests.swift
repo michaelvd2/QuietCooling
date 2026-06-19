@@ -469,6 +469,66 @@ final class AppModelTests: XCTestCase {
     }
 
     @MainActor
+    func testHardCoolAppliesMaximumFloorUntilTargetTemperature() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_500)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 50)
+        )
+
+        model.tick()
+        fanController.setMinimumRPMCalls.removeAll()
+
+        model.setHardCoolActive(true)
+
+        XCTAssertTrue(model.isHardCoolActive)
+        XCTAssertEqual(model.hardCoolTargetTemperatureC, 40)
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [6_200])
+        XCTAssertEqual(model.status, .hardCooling(targetTemperatureC: 40))
+    }
+
+    @MainActor
+    func testHardCoolAutoDeactivatesAtTargetTemperature() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_500)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 39)
+        )
+
+        model.setHardCoolActive(true)
+
+        XCTAssertFalse(model.isHardCoolActive)
+        XCTAssertEqual(model.status, .followingMacOS)
+        XCTAssertEqual(fanController.setMinimumRPMCalls, [])
+    }
+
+    @MainActor
+    func testHardCoolTargetTemperaturePersistsAndClamps() {
+        let fixture = makePreferencesFixture()
+        defer { fixture.cleanup() }
+        let fanController = RecordingFanController(currentRPM: 1_500)
+        let model = AppModel(
+            preferencesStore: fixture.store,
+            fanController: fanController,
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 50)
+        )
+
+        model.setHardCoolTargetTemperatureC(58)
+        XCTAssertEqual(model.hardCoolTargetTemperatureC, 55)
+        XCTAssertEqual(fixture.store.load().hardCoolTargetTemperatureC, 55)
+
+        model.setHardCoolTargetTemperatureC(30)
+        XCTAssertEqual(model.hardCoolTargetTemperatureC, 35)
+        XCTAssertEqual(fixture.store.load().hardCoolTargetTemperatureC, 35)
+    }
+
+    @MainActor
     func testCloseControlsInvokesInjectedCloseAction() {
         let fixture = makePreferencesFixture()
         defer { fixture.cleanup() }

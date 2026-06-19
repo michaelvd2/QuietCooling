@@ -428,6 +428,52 @@ final class CoolingPolicyTests: XCTestCase {
         XCTAssertEqual(decision.status, .temporaryTest(targetRPM: 3_600))
     }
 
+    func testHardCoolTargetOverridesSystemModeWithMaximumFanFloor() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .system,
+                temperatureC: 52,
+                currentRPM: 1_600,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_200,
+                strength: .medium,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil,
+                hardCoolTargetTemperatureC: 40,
+                previousTargetRPM: nil,
+                systemBaselineRPM: 1_600
+            )
+        )
+
+        XCTAssertEqual(decision.command, .setMinimumRPM(6_200))
+        XCTAssertEqual(decision.targetRPM, 6_200)
+        XCTAssertEqual(decision.status, .hardCooling(targetTemperatureC: 40))
+    }
+
+    func testHardCoolReleasesOnceTemperatureIsAtTarget() {
+        let decision = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 40,
+                currentRPM: 1_600,
+                fanRange: fanRange,
+                quietCeilingRPM: 2_200,
+                strength: .strong,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil,
+                hardCoolTargetTemperatureC: 40,
+                previousTargetRPM: nil,
+                systemBaselineRPM: 1_600
+            )
+        )
+
+        XCTAssertEqual(decision.command, .release)
+        XCTAssertNil(decision.targetRPM)
+        XCTAssertEqual(decision.status, .followingMacOS)
+    }
+
     func testHardwareLimitationsReturnHonestStatusWithoutApplyingControl() {
         let noFanDecision = CoolingPolicy.decide(
             CoolingInputs(

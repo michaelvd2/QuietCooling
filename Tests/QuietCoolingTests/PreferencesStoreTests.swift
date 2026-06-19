@@ -10,6 +10,7 @@ final class PreferencesStoreTests: XCTestCase {
             quietCeilingRPM: 2_450,
             manualTargetRPM: 3_250,
             customPreCoolingCeilingRPM: 3_650,
+            hardCoolTargetTemperatureC: 42,
             preCoolingStrength: .strong,
             launchAtLogin: true,
             selectedSensorID: "soc-die"
@@ -25,6 +26,7 @@ final class PreferencesStoreTests: XCTestCase {
         defaults.set("not-a-mode", forKey: "selectedMode")
         defaults.set(-100, forKey: "quietCeilingRPM")
         defaults.set(-200, forKey: "customPreCoolingCeilingRPM")
+        defaults.set(5, forKey: "hardCoolTargetTemperatureC")
         defaults.set("not-strength", forKey: "preCoolingStrength")
 
         let preferences = PreferencesStore(defaults: defaults).load()
@@ -33,6 +35,7 @@ final class PreferencesStoreTests: XCTestCase {
         XCTAssertEqual(preferences.quietCeilingRPM, 2_200)
         XCTAssertEqual(preferences.manualTargetRPM, 2_800)
         XCTAssertEqual(preferences.customPreCoolingCeilingRPM, 3_400)
+        XCTAssertEqual(preferences.hardCoolTargetTemperatureC, 40)
         XCTAssertEqual(preferences.preCoolingStrength, .medium)
     }
 
@@ -45,6 +48,7 @@ final class PreferencesStoreTests: XCTestCase {
                 quietCeilingRPM: 2_800,
                 manualTargetRPM: 3_400,
                 customPreCoolingCeilingRPM: 3_800,
+                hardCoolTargetTemperatureC: 44,
                 preCoolingStrength: .strong,
                 launchAtLogin: true,
                 selectedSensorID: "gpu"
@@ -64,6 +68,7 @@ final class PreferencesStoreTests: XCTestCase {
             quietCeilingRPM: 2_950,
             manualTargetRPM: 3_500,
             customPreCoolingCeilingRPM: 4_200,
+            hardCoolTargetTemperatureC: 43,
             preCoolingStrength: .custom,
             launchAtLogin: true,
             selectedSensorID: "soc-die"
@@ -83,6 +88,7 @@ final class PreferencesStoreTests: XCTestCase {
             quietCeilingRPM: 2_450,
             manualTargetRPM: 3_250,
             customPreCoolingCeilingRPM: 3_650,
+            hardCoolTargetTemperatureC: 41,
             preCoolingStrength: .strong,
             launchAtLogin: false,
             selectedSensorID: "gpu"
@@ -92,6 +98,7 @@ final class PreferencesStoreTests: XCTestCase {
             quietCeilingRPM: 2_950,
             manualTargetRPM: 3_500,
             customPreCoolingCeilingRPM: 4_200,
+            hardCoolTargetTemperatureC: 43,
             preCoolingStrength: .custom,
             launchAtLogin: true,
             selectedSensorID: "soc-die"

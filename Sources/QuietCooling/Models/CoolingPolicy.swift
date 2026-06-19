@@ -13,6 +13,7 @@ struct CoolingInputs: Equatable {
     var limitationReason: String?
     var manualTargetRPM: Int = 2_800
     var temporaryTestTargetRPM: Int? = nil
+    var hardCoolTargetTemperatureC: Int? = nil
     var previousTargetRPM: Int? = nil
     var systemBaselineRPM: Int? = nil
 }
@@ -43,6 +44,7 @@ enum CoolingStatus: Equatable {
     case preCooling(boostRPM: Int)
     case manual(targetRPM: Int)
     case temporaryTest(targetRPM: Int)
+    case hardCooling(targetTemperatureC: Int)
     case limitedByThisMac(String)
     case fanControlUnavailable(String)
     case noFansDetected
@@ -64,11 +66,15 @@ enum CoolingPolicy {
             return CoolingDecision(command: .release, status: .noFansDetected, targetRPM: nil)
         }
 
-        if inputs.mode == .off, inputs.temporaryTestTargetRPM == nil {
+        if inputs.mode == .off,
+           inputs.temporaryTestTargetRPM == nil,
+           inputs.hardCoolTargetTemperatureC == nil {
             return CoolingDecision(command: .release, status: .off, targetRPM: nil)
         }
 
-        if inputs.mode == .system, inputs.temporaryTestTargetRPM == nil {
+        if inputs.mode == .system,
+           inputs.temporaryTestTargetRPM == nil,
+           inputs.hardCoolTargetTemperatureC == nil {
             return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
         }
 
@@ -111,9 +117,14 @@ enum CoolingPolicy {
             return false
         }
 
-        func guardedFloorDecision(targetRPM requestedTargetRPM: Int, status: CoolingStatus) -> CoolingDecision {
+        func guardedFloorDecision(
+            targetRPM requestedTargetRPM: Int,
+            status: CoolingStatus,
+            releaseAtSystemThreshold: Bool = true
+        ) -> CoolingDecision {
             if let temperatureC = inputs.temperatureC,
-               temperatureC >= configuration.systemReleaseThresholdC {
+               temperatureC >= configuration.systemReleaseThresholdC,
+               releaseAtSystemThreshold {
                 return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
             }
 
@@ -133,6 +144,22 @@ enum CoolingPolicy {
                 command: .setMinimumRPM(targetRPM),
                 status: status,
                 targetRPM: targetRPM
+            )
+        }
+
+        if let targetTemperatureC = inputs.hardCoolTargetTemperatureC {
+            guard let temperatureC = inputs.temperatureC else {
+                return CoolingDecision(command: .release, status: .sensorUnavailable, targetRPM: nil)
+            }
+
+            guard temperatureC > Double(targetTemperatureC) else {
+                return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
+            }
+
+            return guardedFloorDecision(
+                targetRPM: fanRange.maximumRPM,
+                status: .hardCooling(targetTemperatureC: targetTemperatureC),
+                releaseAtSystemThreshold: false
             )
         }
 

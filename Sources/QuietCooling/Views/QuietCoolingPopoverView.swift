@@ -45,6 +45,8 @@ struct QuietCoolingPopoverView: View {
 
             TemporaryFanTestControl(model: model)
 
+            HardCoolControl(model: model)
+
             if model.showingSettings {
                 Divider()
                 SettingsPanel(model: model)
@@ -381,6 +383,53 @@ private struct TemporaryFanTestControl: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
+        }
+    }
+}
+
+private struct HardCoolControl: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Button {
+                    model.setHardCoolActive(!model.isHardCoolActive)
+                } label: {
+                    Label(
+                        model.isHardCoolActive ? "Stop hard cool" : "Hard cool now",
+                        systemImage: model.isHardCoolActive ? "stop.circle" : "snowflake"
+                    )
+                }
+                .disabled(!model.canAdjustControls)
+
+                Spacer()
+
+                Text("Until \(model.hardCoolTargetTemperatureC)°C")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+
+            Slider(
+                value: Binding(
+                    get: { Double(model.hardCoolTargetTemperatureC) },
+                    set: { model.setHardCoolTargetTemperatureC(Int($0.rounded())) }
+                ),
+                in: 35...55,
+                step: 1
+            )
+            .disabled(!model.canAdjustControls)
+
+            HStack {
+                Text("35°C")
+                Spacer()
+                Text("40°C good bag target")
+                Spacer()
+                Text("55°C")
+            }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
         }
     }
 }

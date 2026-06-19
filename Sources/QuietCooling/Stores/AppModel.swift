@@ -51,6 +51,23 @@ final class AppModel: ObservableObject {
         }
     }
 
+    @Published private(set) var hardCoolTargetTemperatureC: Int {
+        didSet {
+            persistPreferences()
+            if isHardCoolActive {
+                cancelPendingControlTick()
+                tick()
+            }
+        }
+    }
+
+    @Published private(set) var isHardCoolActive = false {
+        didSet {
+            cancelPendingControlTick()
+            tick()
+        }
+    }
+
     @Published var preCoolingStrength: PreCoolingStrength {
         didSet {
             persistPreferences()
@@ -106,6 +123,7 @@ final class AppModel: ObservableObject {
         self.manualTargetRPM = preferences.manualTargetRPM
         self.customPreCoolingCeilingRPM = preferences.customPreCoolingCeilingRPM
         self.temporaryTestRPM = max(preferences.manualTargetRPM, 3_200)
+        self.hardCoolTargetTemperatureC = preferences.hardCoolTargetTemperatureC
         self.preCoolingStrength = preferences.preCoolingStrength
         self.launchAtLogin = preferences.launchAtLogin
         self.helperInstallStatus = helperServiceManager.status()
@@ -263,12 +281,37 @@ final class AppModel: ObservableObject {
     }
 
     func setTemporaryFanTestActive(_ active: Bool) {
+        guard isTemporaryFanTestActive != active else {
+            return
+        }
+
         if active && !isTemporaryFanTestActive {
             temporaryTestBaselineRPM = currentRPMMarker ?? rpmControlBaseline
+            if isHardCoolActive {
+                isHardCoolActive = false
+            }
         } else if !active {
             temporaryTestBaselineRPM = nil
         }
         isTemporaryFanTestActive = active
+    }
+
+    func setHardCoolTargetTemperatureC(_ temperatureC: Int) {
+        hardCoolTargetTemperatureC = clampedHardCoolTargetTemperature(temperatureC)
+    }
+
+    func setHardCoolActive(_ active: Bool) {
+        guard isHardCoolActive != active else {
+            return
+        }
+
+        if active {
+            temporaryTestBaselineRPM = nil
+            if isTemporaryFanTestActive {
+                isTemporaryFanTestActive = false
+            }
+        }
+        isHardCoolActive = active
     }
 
     func start() {
@@ -357,6 +400,8 @@ final class AppModel: ObservableObject {
         temporaryTestRPM = max(defaults.manualTargetRPM, 3_200)
         temporaryTestBaselineRPM = nil
         isTemporaryFanTestActive = false
+        hardCoolTargetTemperatureC = defaults.hardCoolTargetTemperatureC
+        isHardCoolActive = false
         preCoolingStrength = defaults.preCoolingStrength
         launchAtLogin = defaults.launchAtLogin
         preferencesStore.save(defaults)
@@ -382,6 +427,10 @@ final class AppModel: ObservableObject {
         fanRPM = currentRPM
         updateObservedSystemBaseline(currentRPM: currentRPM)
         temperatureC = try? sensorProvider.readHottestRelevantTemperature()
+        if let temperatureC, isHardCoolActive, temperatureC <= Double(hardCoolTargetTemperatureC) {
+            isHardCoolActive = false
+            return
+        }
 
         let decision = CoolingPolicy.decide(
             CoolingInputs(
@@ -397,6 +446,7 @@ final class AppModel: ObservableObject {
                 limitationReason: fanController.controlLimitationReason(),
                 manualTargetRPM: manualTargetRPMForControls,
                 temporaryTestTargetRPM: isTemporaryFanTestActive ? temporaryTestRPMForControls : nil,
+                hardCoolTargetTemperatureC: isHardCoolActive ? hardCoolTargetTemperatureC : nil,
                 previousTargetRPM: lastAppliedTargetRPM,
                 systemBaselineRPM: observedSystemBaselineRPM
             )
@@ -487,6 +537,7 @@ final class AppModel: ObservableObject {
                 quietCeilingRPM: quietCeilingRPM,
                 manualTargetRPM: manualTargetRPM,
                 customPreCoolingCeilingRPM: customPreCoolingCeilingRPM,
+                hardCoolTargetTemperatureC: hardCoolTargetTemperatureC,
                 preCoolingStrength: preCoolingStrength,
                 launchAtLogin: launchAtLogin,
                 selectedSensorID: nil
@@ -539,6 +590,10 @@ final class AppModel: ObservableObject {
         let range = customPreCoolingRange()
         let roundedRPM = Int((Double(rpm) / 50).rounded() * 50)
         return min(max(roundedRPM, Int(range.lowerBound)), Int(range.upperBound))
+    }
+
+    private func clampedHardCoolTargetTemperature(_ temperatureC: Int) -> Int {
+        min(max(temperatureC, 35), 55)
     }
 
     private func updateObservedSystemBaseline(currentRPM: Int?) {

@@ -52,6 +52,8 @@ extension CoolingStatus {
             "Manual \(DisplayFormatters.fanRPM(targetRPM))"
         case .temporaryTest(let targetRPM):
             "Testing \(DisplayFormatters.fanRPM(targetRPM))"
+        case .hardCooling(let targetTemperatureC):
+            "Hard cooling to \(targetTemperatureC)°C"
         case .limitedByThisMac(let reason):
             reason.isEmpty ? "Limited by this Mac" : reason
         case .fanControlUnavailable(let reason):
@@ -67,7 +69,7 @@ extension CoolingStatus {
         switch self {
         case .limitedByThisMac, .fanControlUnavailable, .noFansDetected, .sensorUnavailable:
             true
-        case .off, .followingMacOS, .alwaysQuiet, .preCooling, .manual, .temporaryTest:
+        case .off, .followingMacOS, .alwaysQuiet, .preCooling, .manual, .temporaryTest, .hardCooling:
             false
         }
     }
