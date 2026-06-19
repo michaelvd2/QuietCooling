@@ -45,7 +45,7 @@ extension CoolingStatus {
         case .followingMacOS:
             "Following macOS"
         case .alwaysQuiet:
-            "Always Quiet"
+            "Steady quiet floor"
         case .preCooling(let boostRPM):
             boostRPM > 0 ? "Pre-cooling +\(boostRPM) RPM" : "Pre-cooling"
         case .manual(let targetRPM):

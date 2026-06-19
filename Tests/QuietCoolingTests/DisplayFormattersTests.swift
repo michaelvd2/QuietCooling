@@ -11,4 +11,8 @@ final class DisplayFormattersTests: XCTestCase {
         XCTAssertEqual(DisplayFormatters.macOSBaselineRPM(2_646), "macOS asks 2,646 RPM")
         XCTAssertEqual(DisplayFormatters.macOSBaselineRPM(nil), "macOS asks unavailable")
     }
+
+    func testSteadyQuietFloorStatusLabel() {
+        XCTAssertEqual(CoolingStatus.alwaysQuiet.displayText, "Steady quiet floor")
+    }
 }

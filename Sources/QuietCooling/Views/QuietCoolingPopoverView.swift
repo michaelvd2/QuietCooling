@@ -13,8 +13,15 @@ struct QuietCoolingPopoverView: View {
 
             if model.selectedMode == .manual {
                 ManualRPMControl(model: model)
+            } else if model.selectedMode == .alwaysQuiet {
+                QuietCeilingControl(model: model, label: "Quiet floor")
+
+                Text("Keeps a steady quiet fan floor. macOS can still ask for more cooling.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
-                QuietCeilingControl(model: model)
+                QuietCeilingControl(model: model, label: "Quiet ceiling")
 
                 Picker("Pre-cooling strength", selection: $model.preCoolingStrength) {
                     ForEach(PreCoolingStrength.allCases) { strength in
@@ -203,11 +210,12 @@ private struct StatusPill: View {
 
 private struct QuietCeilingControl: View {
     @ObservedObject var model: AppModel
+    var label: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("Quiet ceiling", systemImage: "dial.low")
+                Label(label, systemImage: "dial.low")
                 Spacer()
                 Text(DisplayFormatters.fanRPM(model.quietCeilingRPMForControls))
                     .monospacedDigit()
