@@ -14,6 +14,7 @@ final class AppKitStatusItemController: NSObject {
     private var statusItem: NSStatusItem?
     private var expandedInterfaceBridge: StatusItemExpandedInterfaceBridge?
     private var modelObserver: AnyCancellable?
+    private var shouldIgnoreNextButtonAction = false
 
     init(
         model: AppModel,
@@ -100,10 +101,10 @@ final class AppKitStatusItemController: NSObject {
         expandedInterfaceBridge = StatusItemExpandedInterfaceBridge(
             statusItem: item,
             onBegin: { [weak self] in
-                self?.onBeginExpandedInterface()
+                self?.beginExpandedInterface()
             },
             onEnd: { [weak self] in
-                self?.onEndExpandedInterface()
+                self?.endExpandedInterface()
             }
         )
         expandedInterfaceBridge?.installIfAvailable()
@@ -124,9 +125,32 @@ final class AppKitStatusItemController: NSObject {
         openControls(nil)
     }
 
+    func beginExpandedInterfaceForTests() {
+        beginExpandedInterface()
+    }
+
+    func endExpandedInterfaceForTests() {
+        endExpandedInterface()
+    }
+
     @objc private func openControls(_ sender: Any?) {
+        if shouldIgnoreNextButtonAction {
+            shouldIgnoreNextButtonAction = false
+            return
+        }
+
         expandedInterfaceBridge?.cancelSessionIfAvailable()
         onOpenControls()
+    }
+
+    private func beginExpandedInterface() {
+        shouldIgnoreNextButtonAction = true
+        onBeginExpandedInterface()
+    }
+
+    private func endExpandedInterface() {
+        shouldIgnoreNextButtonAction = false
+        onEndExpandedInterface()
     }
 
     private func updateStatusItem() {

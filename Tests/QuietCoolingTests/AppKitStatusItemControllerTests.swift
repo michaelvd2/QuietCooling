@@ -56,6 +56,45 @@ final class AppKitStatusItemControllerTests: XCTestCase {
         XCTAssertEqual(openCallCount, 1)
     }
 
+    func testMouseUpAfterExpandedInterfaceBeginDoesNotToggleWindowClosed() {
+        var toggleCallCount = 0
+        var showCallCount = 0
+        let controller = AppKitStatusItemController(
+            model: AppModel.demo(),
+            onOpenControls: {
+                toggleCallCount += 1
+            },
+            onBeginExpandedInterface: {
+                showCallCount += 1
+            },
+            onEndExpandedInterface: {}
+        )
+
+        controller.beginExpandedInterfaceForTests()
+        controller.pressForTests()
+
+        XCTAssertEqual(showCallCount, 1)
+        XCTAssertEqual(toggleCallCount, 0)
+    }
+
+    func testPressAfterExpandedInterfaceEndsTogglesAgain() {
+        var toggleCallCount = 0
+        let controller = AppKitStatusItemController(
+            model: AppModel.demo(),
+            onOpenControls: {
+                toggleCallCount += 1
+            },
+            onBeginExpandedInterface: {},
+            onEndExpandedInterface: {}
+        )
+
+        controller.beginExpandedInterfaceForTests()
+        controller.endExpandedInterfaceForTests()
+        controller.pressForTests()
+
+        XCTAssertEqual(toggleCallCount, 1)
+    }
+
     func testStatusItemUsesRuntimeExpandedInterfaceBridgeForMacOS27() throws {
         let controllerSource = try String(contentsOf: appKitStatusItemControllerURL(), encoding: .utf8)
         let bridgeSource = try String(contentsOf: statusItemBridgeURL(), encoding: .utf8)
@@ -67,6 +106,13 @@ final class AppKitStatusItemControllerTests: XCTestCase {
         XCTAssertTrue(bridgeSource.contains("statusItem:didBeginExpandedInterfaceSession:"))
         XCTAssertTrue(bridgeSource.contains("statusItemDidEndExpandedInterfaceSession:animated:"))
         XCTAssertFalse(bridgeSource.contains("NSStatusItemExpandedInterfaceDelegate"))
+    }
+
+    func testRuntimeDoesNotCloseControlsWindowOnExpandedInterfaceEnd() throws {
+        let appSource = try String(contentsOf: quietCoolingAppURL(), encoding: .utf8)
+
+        XCTAssertTrue(appSource.contains("onEndExpandedInterface: {}"))
+        XCTAssertFalse(appSource.contains("onEndExpandedInterface: { [weak self] in\n                self?.closeControlsWindow()"))
     }
 
     private func appKitStatusItemControllerURL() -> URL {
@@ -83,5 +129,13 @@ final class AppKitStatusItemControllerTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("Sources/QuietCooling/App/StatusItemExpandedInterfaceBridge.swift")
+    }
+
+    private func quietCoolingAppURL() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/QuietCooling/App/QuietCoolingApp.swift")
     }
 }
