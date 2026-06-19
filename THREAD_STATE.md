@@ -11,10 +11,17 @@
 - Latest menu-bar click fix: the macOS expanded-interface bridge was removed from the status-item click path. The menu-bar item is now a plain `NSStatusButton` target/action toggle, so repeated clicks are not split between delegate and mouse-up callbacks.
 - Latest close/reopen fix: status-item toggles now account for the case where `NSApplication.didResignActiveNotification` closes the controls window just before the status-item action fires. That click is treated as the close action instead of immediately reopening the window.
 - Latest lightweight fix: controls close now hides/orders out the existing window instead of destroying the SwiftUI host, so reopen reuses the warm controls window. The delayed 200ms second `orderFront/activate` pass was removed from `show()`.
+- Latest cooling feature: `Hard cool now` is available in the controls window. It requests the hardware maximum fan floor until the measured temperature reaches the configurable target, defaults to 40°C, clamps user input to 35-55°C, then auto-deactivates and releases back to the selected mode/macOS.
+- GitHub: repo is public at `https://github.com/michaelvd2/QuietCooling`, remote `origin` tracks `main`.
+- GitHub Pages: enabled from `main` `/docs`, live at `https://michaelvd2.github.io/QuietCooling/`.
 - Installed app: `/Applications/QuietCooling.app`
 - Validation:
-  - `swift test` passed: 104 tests on 2026-06-19 after the lightweight-window fix.
-  - `./script/build_and_run.sh --verify` passed on 2026-06-19 after the lightweight-window fix.
+  - `swift test` passed: 109 tests on 2026-06-19 after the hard-cool feature.
+  - `./script/build_and_run.sh --verify` passed on 2026-06-19 after the hard-cool feature.
+  - `/Applications/QuietCooling.app/Contents/MacOS/QuietCooling` and `QuietCoolingHelper` were both running after the hard-cool relaunch.
+  - Pages API reported `status=built`, `source={branch: main, path: /docs}`.
+  - Live Pages checks returned `200 text/html` for `/QuietCooling/`, `200 text/plain` for `/robots.txt`, `200 application/xml` for `/sitemap.xml`, and `200 text/html` for `/native-backend.html`.
+  - `xmllint --noout docs/sitemap.xml` passed; JSON-LD in `docs/index.html` parsed with Node.
   - Relaunch stability check passed: `/Applications/QuietCooling.app/Contents/MacOS/QuietCooling` and `QuietCoolingHelper` both remained running after relaunch.
   - Installed app plist verified: `CFBundleIdentifier=com.mvandijk.QuietCooling.MenuBar`, `LSUIElement=true`.
   - Native status item AX evidence: `pos=1217,3`, `size=44,24`, tooltip/accessibility value `3,677 RPM`.
@@ -22,4 +29,4 @@
   - Helper diagnostics verified: 2 real fans, RPM readback, `helper.canWriteFloors=true`, `helper.limitation=none`.
   - Final visual evidence: `/tmp/quietcooling-evidence/hardened-final-main-icon-crop.png` shows the native compact fan+temperature icon (`63°`) in the menu bar, without overlay/double/pressed background.
 - Caveat: the old bundle id still reproduces bad native status-item placement on this machine; do not revert to `com.mvandijk.QuietCooling` without first finding and clearing the hidden system state that causes that placement.
-- Next: dogfood repeated clicks on the visible native menu-bar item plus Steady/Prevent/Manual floor behavior during normal Mac use.
+- Next: dogfood the new `Hard cool now` control with real hardware during normal Mac use, especially target auto-release around 40°C.
