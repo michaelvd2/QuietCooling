@@ -184,7 +184,13 @@ enum CoolingPolicy {
                 return CoolingDecision(command: .release, status: .sensorUnavailable, targetRPM: nil)
             }
 
-            if temperatureC < configuration.coolThresholdC {
+            // Aggressiveness shifts the ramp window earlier by `leadC`. The hot-side
+            // release threshold is never shifted — Apple's max-cooling path is sacred.
+            let leadC = Double(inputs.strength.leadC)
+            let coolThresholdC = configuration.coolThresholdC - leadC
+            let rampEndThresholdC = configuration.rampEndThresholdC - leadC
+
+            if temperatureC < coolThresholdC {
                 return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
             }
 
@@ -197,21 +203,25 @@ enum CoolingPolicy {
                 return CoolingDecision(command: .release, status: .followingMacOS, targetRPM: nil)
             }
 
-            let target: Int
-            if temperatureC >= configuration.rampEndThresholdC {
-                target = preCoolingCeiling
+            let progress: Double
+            if temperatureC >= rampEndThresholdC {
+                progress = 1
             } else {
-                let rawProgress = (temperatureC - configuration.coolThresholdC)
-                    / (configuration.rampEndThresholdC - configuration.coolThresholdC)
-                let shapedProgress = pow(min(max(rawProgress, 0), 1), inputs.strength.rampExponent)
-                let rpm = Double(baselineRPM)
-                    + (Double(preCoolingCeiling - baselineRPM) * shapedProgress)
-                target = fanRange.clamped(Int(rpm.rounded()))
+                progress = min(max((temperatureC - coolThresholdC)
+                    / (rampEndThresholdC - coolThresholdC), 0), 1)
             }
 
-            let boostRPM = max(0, target - baselineRPM)
+            // floor + gain · (boost above the macOS baseline), capped at the quiet/audible
+            // ceiling. The floor is a raised idle; gain multiplies the ramp.
+            let boost = inputs.strength.gain * Double(preCoolingCeiling - baselineRPM) * progress
+            var target = Double(baselineRPM) + boost
+            target = max(target, Double(inputs.strength.floorRPM))
+            target = min(target, Double(preCoolingCeiling))
+            let targetRPM = fanRange.clamped(Int(target.rounded()))
+
+            let boostRPM = max(0, targetRPM - baselineRPM)
             return guardedFloorDecision(
-                targetRPM: target,
+                targetRPM: targetRPM,
                 status: .preCooling(boostRPM: boostRPM)
             )
         case .manual:

@@ -498,7 +498,7 @@ final class AppModelTests: XCTestCase {
         let model = AppModel(
             preferencesStore: fixture.store,
             fanController: fanController,
-            sensorProvider: StaticThermalSensorProvider(temperatureC: 39)
+            sensorProvider: StaticThermalSensorProvider(temperatureC: 35)
         )
 
         model.setHardCoolActive(true)

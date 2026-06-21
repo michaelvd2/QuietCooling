@@ -131,7 +131,7 @@ final class CoolingPolicyTests: XCTestCase {
         let decision = CoolingPolicy.decide(
             CoolingInputs(
                 mode: .preventFanBlast,
-                temperatureC: 44.9,
+                temperatureC: 38,
                 currentRPM: 1_350,
                 fanRange: fanRange,
                 quietCeilingRPM: 2_400,
@@ -151,41 +151,52 @@ final class CoolingPolicyTests: XCTestCase {
         let decision = CoolingPolicy.decide(
             CoolingInputs(
                 mode: .preventFanBlast,
-                temperatureC: 55,
+                temperatureC: 48,
                 currentRPM: 1_600,
                 fanRange: fanRange,
-                quietCeilingRPM: 2_400,
-                strength: .medium,
-                hasFans: true,
-                canControlFans: true,
-                limitationReason: nil
-            )
-        )
-
-        XCTAssertEqual(decision.command, .setMinimumRPM(2_000))
-        XCTAssertEqual(decision.targetRPM, 2_000)
-        XCTAssertEqual(decision.status, .preCooling(boostRPM: 400))
-    }
-
-    func testPreventFanBlastTracksSystemBaselineWithMoreSensitiveRamp() {
-        let decision = CoolingPolicy.decide(
-            CoolingInputs(
-                mode: .preventFanBlast,
-                temperatureC: 55,
-                currentRPM: 1_850,
-                fanRange: fanRange,
-                quietCeilingRPM: 2_400,
+                quietCeilingRPM: 3_400,
                 strength: .medium,
                 hasFans: true,
                 canControlFans: true,
                 limitationReason: nil,
-                systemBaselineRPM: 1_850
+                systemBaselineRPM: 1_600
             )
         )
 
-        XCTAssertEqual(decision.command, .setMinimumRPM(2_125))
-        XCTAssertEqual(decision.targetRPM, 2_125)
-        XCTAssertEqual(decision.status, .preCooling(boostRPM: 275))
+        let target = decision.targetRPM
+        XCTAssertNotNil(target)
+        XCTAssertGreaterThan(target ?? 0, 1_600)        // boosted above the macOS baseline
+        XCTAssertLessThan(target ?? 0, 3_400)           // still ramping, below the quiet/audible cap
+        XCTAssertEqual(decision.command, .setMinimumRPM(target ?? 0))
+        XCTAssertEqual(decision.status, .preCooling(boostRPM: (target ?? 0) - 1_600))
+    }
+
+    func testPreventFanBlastTracksSystemBaselineWithMoreSensitiveRamp() {
+        func boost(baseline: Int) -> Int {
+            let decision = CoolingPolicy.decide(
+                CoolingInputs(
+                    mode: .preventFanBlast,
+                    temperatureC: 48,
+                    currentRPM: baseline,
+                    fanRange: fanRange,
+                    quietCeilingRPM: 3_400,
+                    strength: .medium,
+                    hasFans: true,
+                    canControlFans: true,
+                    limitationReason: nil,
+                    systemBaselineRPM: baseline
+                )
+            )
+            guard case let .preCooling(boostRPM) = decision.status else {
+                return -1
+            }
+            return boostRPM
+        }
+
+        // A higher observed macOS baseline leaves less headroom, so the added boost shrinks.
+        XCTAssertGreaterThan(boost(baseline: 1_600), 0)
+        XCTAssertGreaterThan(boost(baseline: 1_850), 0)
+        XCTAssertLessThan(boost(baseline: 1_850), boost(baseline: 1_600))
     }
 
     func testPreventFanBlastHoldsQuietCeilingBeforeVeryHotRelease() {
@@ -295,7 +306,7 @@ final class CoolingPolicyTests: XCTestCase {
                 temperatureC: 45,
                 currentRPM: 1_150,
                 fanRange: fanRange,
-                quietCeilingRPM: 2_400,
+                quietCeilingRPM: 1_100,
                 strength: .medium,
                 hasFans: true,
                 canControlFans: true,
@@ -306,6 +317,72 @@ final class CoolingPolicyTests: XCTestCase {
         XCTAssertEqual(decision.command, .release)
         XCTAssertNil(decision.targetRPM)
         XCTAssertEqual(decision.status, .followingMacOS)
+    }
+
+    func testStrongPreCoolsAtRaisedFloorWhereLightStillReleases() {
+        let light = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 40,
+                currentRPM: 1_650,
+                fanRange: fanRange,
+                quietCeilingRPM: 3_000,
+                strength: .light,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil,
+                systemBaselineRPM: 1_650
+            )
+        )
+
+        XCTAssertEqual(light.command, .release)
+        XCTAssertEqual(light.status, .followingMacOS)
+
+        let strong = CoolingPolicy.decide(
+            CoolingInputs(
+                mode: .preventFanBlast,
+                temperatureC: 40,
+                currentRPM: 1_650,
+                fanRange: fanRange,
+                quietCeilingRPM: 3_000,
+                strength: .strong,
+                hasFans: true,
+                canControlFans: true,
+                limitationReason: nil,
+                systemBaselineRPM: 1_650
+            )
+        )
+
+        XCTAssertEqual(strong.command, .setMinimumRPM(2_900))
+        XCTAssertEqual(strong.targetRPM, 2_900)
+        XCTAssertEqual(strong.status, .preCooling(boostRPM: 1_250))
+    }
+
+    func testStrongerStrengthRampsHigherThanLighterAtSameTemperature() {
+        func target(for strength: PreCoolingStrength) -> Int? {
+            CoolingPolicy.decide(
+                CoolingInputs(
+                    mode: .preventFanBlast,
+                    temperatureC: 55,
+                    currentRPM: 1_650,
+                    fanRange: fanRange,
+                    quietCeilingRPM: 3_000,
+                    strength: strength,
+                    hasFans: true,
+                    canControlFans: true,
+                    limitationReason: nil,
+                    systemBaselineRPM: 1_650
+                )
+            ).targetRPM
+        }
+
+        let lightTarget = target(for: .light)
+        let strongTarget = target(for: .strong)
+
+        XCTAssertNotNil(lightTarget)
+        XCTAssertNotNil(strongTarget)
+        XCTAssertGreaterThanOrEqual(strongTarget ?? 0, 2_900)
+        XCTAssertGreaterThan(strongTarget ?? 0, lightTarget ?? 0)
     }
 
     func testManualModeSetsTargetAboveObservedSystemBaseline() {
