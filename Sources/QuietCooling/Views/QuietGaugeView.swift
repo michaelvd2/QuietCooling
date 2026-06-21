@@ -46,11 +46,13 @@ struct QuietGaugeView: View {
                         .frame(width: 8, height: 8)
                         .overlay(Circle().stroke(.background, lineWidth: 1.5))
                         .position(x: macX, y: bandY)
-                    Text("macOS")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .fixedSize()
-                        .position(x: macX, y: bandY + 14)
+                    if abs(macX - fanX) >= 40 {
+                        Text("macOS")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                            .position(x: macX, y: bandY + 14)
+                    }
                 }
 
                 // Audible line — user calibration. Draggable.
@@ -59,11 +61,13 @@ struct QuietGaugeView: View {
                     Circle().fill(Color.orange).frame(width: 9, height: 9)
                         .overlay(Circle().stroke(.background, lineWidth: 1.5))
                         .offset(y: 17)
-                    Text("audible")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.orange)
-                        .fixedSize()
-                        .offset(y: -22)
+                    if abs(fanX - audX) >= 46 {
+                        Text("audible")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.orange)
+                            .fixedSize()
+                            .offset(y: -22)
+                    }
                 }
                 .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
