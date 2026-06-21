@@ -13,7 +13,7 @@ struct UserPreferences: Equatable {
 
     static let defaults = UserPreferences(
         selectedMode: .preventFanBlast,
-        quietCeilingRPM: 2_200,
+        quietCeilingRPM: 3_000,
         manualTargetRPM: 2_800,
         customPreCoolingCeilingRPM: 3_400,
         hardCoolTargetTemperatureC: 40,

@@ -32,7 +32,7 @@ final class PreferencesStoreTests: XCTestCase {
         let preferences = PreferencesStore(defaults: defaults).load()
 
         XCTAssertEqual(preferences.selectedMode, .preventFanBlast)
-        XCTAssertEqual(preferences.quietCeilingRPM, 2_200)
+        XCTAssertEqual(preferences.quietCeilingRPM, 3_000)
         XCTAssertEqual(preferences.manualTargetRPM, 2_800)
         XCTAssertEqual(preferences.customPreCoolingCeilingRPM, 3_400)
         XCTAssertEqual(preferences.hardCoolTargetTemperatureC, 40)
