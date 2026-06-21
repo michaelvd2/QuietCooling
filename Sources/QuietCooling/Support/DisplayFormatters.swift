@@ -12,6 +12,12 @@ enum DisplayFormatters {
         return "\(value) RPM"
     }
 
+    static func plainRPM(_ rpm: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: rpm)) ?? "\(rpm)"
+    }
+
     static func actualFanRPM(_ rpm: Int?) -> String {
         guard let rpm else {
             return "Actual fan unavailable"

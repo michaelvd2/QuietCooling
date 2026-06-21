@@ -2,54 +2,35 @@ import SwiftUI
 
 struct QuietCoolingPopoverView: View {
     @ObservedObject var model: AppModel
+    @State private var showDetails = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+            hero
 
-            StatusPanel(model: model)
-
-            ModeSelector(model: model)
-
-            if model.selectedMode == .manual {
-                ManualRPMControl(model: model)
-            } else if model.selectedMode == .alwaysQuiet {
-                QuietCeilingControl(model: model, label: "Quiet floor")
-
-                Text("Keeps a steady quiet fan floor. macOS can still ask for more cooling.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                QuietCeilingControl(model: model, label: "Quiet ceiling")
-
-                Picker("Pre-cooling strength", selection: $model.preCoolingStrength) {
-                    ForEach(PreCoolingStrength.allCases) { strength in
-                        Text(strength.title).tag(strength)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .disabled(!model.canAdjustControls)
-
-                if model.preCoolingStrength == .custom {
-                    CustomPreCoolingCeilingControl(model: model)
-                }
-
-                Text(model.preCoolingStrength == .custom
-                    ? "Tracks macOS, then ramps earlier up to your custom ceiling."
-                    : "Tracks macOS, then ramps earlier within your quiet range.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            if !model.pinnedTelemetry.isEmpty {
+                pinnedStrip
             }
 
-            TemporaryFanTestControl(model: model)
+            gaugeSection
+
+            StrategySection(model: model)
+
+            if model.nerdModeEnabled {
+                NerdPanel(model: model)
+            }
 
             HardCoolControl(model: model)
 
             if model.showingSettings {
                 Divider()
                 SettingsPanel(model: model)
+            }
+
+            if showDetails {
+                Divider()
+                DetailsPanel(model: model)
             }
 
             Divider()
@@ -62,52 +43,176 @@ struct QuietCoolingPopoverView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Quiet Cooling")
-                    .font(.headline)
-                Text("Keep your Mac cooler before it gets loud.")
-                    .font(.caption)
+        HStack {
+            Label("QuietCooling", systemImage: "wind")
+                .font(.headline)
+                .labelStyle(.titleAndIcon)
+            Spacer()
+            QuietStatusPill(status: model.quietStatus)
+        }
+    }
+
+    private var hero: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            valuePair(value: temperatureText, unit: "°C")
+            Divider().frame(height: 28)
+            valuePair(value: DisplayFormatters.plainRPM(model.gaugeFanRPM), unit: "rpm")
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func valuePair(value: String, unit: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(value)
+                .font(.system(size: 32, weight: .medium))
+                .monospacedDigit()
+            Text(unit)
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var temperatureText: String {
+        guard let temperatureC = model.temperatureC else { return "—" }
+        return "\(Int(temperatureC.rounded()))"
+    }
+
+    private var pinnedStrip: some View {
+        let pinned = model.surfaceTelemetry.filter { model.pinnedTelemetry.contains($0.id) }
+        return HStack(spacing: 6) {
+            ForEach(pinned, id: \.id) { item in
+                HStack(spacing: 5) {
+                    Text(item.chip).foregroundStyle(.secondary)
+                    Text(item.value).fontWeight(.medium)
+                    Button {
+                        model.togglePinned(item.id)
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
+                }
+                .font(.caption2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(.quaternary.opacity(0.5), in: Capsule())
+            }
+        }
+    }
+
+    private var gaugeSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Fan speed")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if model.selectedMode == .manual {
+                    HStack(spacing: 6) {
+                        Text("Manual").foregroundStyle(.orange)
+                        Button("Auto") { model.returnToAutoStrategy() }
+                            .buttonStyle(.borderless)
+                    }
+                    .font(.caption)
+                } else {
+                    Text("Auto").font(.caption).foregroundStyle(.secondary)
+                }
             }
 
-            Spacer()
+            QuietGaugeView(
+                range: model.gaugeFanRange,
+                fanRPM: model.gaugeFanRPM,
+                audibleRPM: model.audibleLineRPM,
+                macOSMarkerRPM: model.currentRPMMarker,
+                isEnabled: model.canAdjustControls,
+                onSetFan: { model.driveFanManually(toRPM: $0) },
+                onSetAudible: { model.setAudibleLineRPM($0) }
+            )
 
-            StatusPill(status: model.status)
+            HStack {
+                Text(DisplayFormatters.plainRPM(model.gaugeFanRange.minimumRPM))
+                Spacer()
+                Text(DisplayFormatters.plainRPM(model.gaugeFanRange.maximumRPM))
+            }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+            .monospacedDigit()
         }
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
-            Toggle(
-                "Launch at login",
-                isOn: Binding(
-                    get: { model.launchAtLogin },
-                    set: { model.setLaunchAtLogin($0) }
-                )
-            )
-            .toggleStyle(.checkbox)
-            .accessibilityLabel("Launch at login")
-            .accessibilityValue(model.launchAtLogin ? "On" : "Off")
+        HStack(spacing: 12) {
+            Button {
+                showDetails.toggle()
+            } label: {
+                Label("Details", systemImage: showDetails ? "chevron.down" : "chevron.right")
+            }
+            .buttonStyle(.borderless)
+
+            Toggle(isOn: $model.nerdModeEnabled) {
+                Label("Nerd mode", systemImage: "chevron.left.forwardslash.chevron.right")
+            }
+            .toggleStyle(.button)
+            .controlSize(.small)
 
             Spacer()
 
-            Button("Settings") {
-                model.showingSettings.toggle()
-            }
-            .accessibilityLabel("Settings")
-
-            Button("Close") {
-                model.closeControls()
-            }
-            .accessibilityLabel("Close controls")
-
-            Button("Quit", role: .destructive) {
-                model.quit()
-            }
-            .accessibilityLabel("Quit")
+            Button("Settings") { model.showingSettings.toggle() }
+                .buttonStyle(.borderless)
+            Button("Quit", role: .destructive) { model.quit() }
+                .buttonStyle(.borderless)
         }
         .font(.caption)
+    }
+}
+
+private struct QuietStatusPill: View {
+    let status: AppModel.QuietStatus
+
+    var body: some View {
+        Label(text, systemImage: icon)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.thinMaterial, in: Capsule())
+    }
+
+    private var text: String {
+        switch status {
+        case .quiet: "Quiet"
+        case .audible: "Audible"
+        case .limited: "Limited"
+        }
+    }
+
+    private var icon: String {
+        switch status {
+        case .quiet: "speaker.wave.1"
+        case .audible: "speaker.wave.3"
+        case .limited: "exclamationmark.triangle"
+        }
+    }
+
+    private var color: Color {
+        switch status {
+        case .quiet: .green
+        case .audible: .orange
+        case .limited: .secondary
+        }
+    }
+}
+
+private struct StrategySection: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("Strategy")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            ModeSelector(model: model)
+        }
     }
 }
 
@@ -141,248 +246,100 @@ private struct ModeSelector: View {
         .padding(3)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Mode")
+        .accessibilityLabel("Strategy")
     }
 }
 
-private struct StatusPanel: View {
+private struct NerdPanel: View {
     @ObservedObject var model: AppModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            MetricRow(label: "Mode", value: model.selectedMode.title, systemImage: "slider.horizontal.3")
-            MetricRow(label: "Actual fan", value: DisplayFormatters.fanRPM(model.fanRPM), systemImage: "fan")
-            MetricRow(label: "Temp", value: DisplayFormatters.temperature(model.temperatureC), systemImage: "thermometer.medium")
-            MetricRow(label: "Status", value: model.status.displayText, systemImage: "waveform.path.ecg")
-            MetricRow(label: "Helper", value: model.helperInstallStatus.displayText, systemImage: "lock.shield")
-
-            if let hardwareNotice = model.hardwareNotice {
-                Label(hardwareNotice, systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if let lastErrorMessage = model.lastErrorMessage {
-                Label(lastErrorMessage, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-}
-
-private struct MetricRow: View {
-    var label: String
-    var value: String
-    var systemImage: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
-            Text(label)
-                .foregroundStyle(.secondary)
-                .frame(width: 72, alignment: .leading)
-            Text(value)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Spacer(minLength: 0)
-        }
-        .font(.caption)
-    }
-}
-
-private struct StatusPill: View {
-    var status: CoolingStatus
-
-    var body: some View {
-        Text(status.isLimited ? "Limited" : "Safe")
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(status.isLimited ? .orange : .secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.thinMaterial, in: Capsule())
-    }
-}
-
-private struct QuietCeilingControl: View {
-    @ObservedObject var model: AppModel
-    var label: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label(label, systemImage: "dial.low")
-                Spacer()
-                Text(DisplayFormatters.fanRPM(model.quietCeilingRPMForControls))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
-
-            Slider(
-                value: Binding(
-                    get: { Double(model.quietCeilingRPMForControls) },
-                    set: { model.setQuietCeilingRPM(Int(($0 / 50).rounded() * 50)) }
-                ),
-                in: model.quietCeilingRange,
-                step: 50
-            )
-            .disabled(!model.canAdjustControls)
-            .overlay {
-                RPMMarkerLine(
-                    range: model.quietCeilingRange,
-                    markerRPM: model.likelyAudibleQuietCeilingRPM
-                )
-            }
-
-            HStack {
-                Text("Min \(DisplayFormatters.fanRPM(Int(model.quietCeilingRange.lowerBound)))")
-                Spacer()
-                if model.likelyAudibleQuietCeilingRPM != nil {
-                    Text("Likely audible")
-                    Spacer()
-                }
-                Text(DisplayFormatters.fanRPM(Int(model.quietCeilingRange.upperBound)))
-            }
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-        }
-    }
-}
-
-private struct ManualRPMControl: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        RPMControlShell(
-            label: "Manual target",
-            systemImage: "dial.high",
-            value: Double(model.manualTargetRPMForControls),
-            range: model.manualRPMRange,
-            lowerLabel: "Min \(DisplayFormatters.fanRPM(Int(model.manualRPMRange.lowerBound)))",
-            markerRPM: model.currentRPMMarker,
-            isEnabled: model.canAdjustControls,
-            commitsContinuously: true,
-            onCommit: { model.setManualTargetRPM(Int($0)) }
-        )
-    }
-}
-
-private struct CustomPreCoolingCeilingControl: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        RPMControlShell(
-            label: "Custom ceiling",
-            systemImage: "dial.medium",
-            value: Double(model.customPreCoolingCeilingRPMForControls),
-            range: model.customPreCoolingCeilingRange,
-            lowerLabel: "Min \(DisplayFormatters.fanRPM(Int(model.customPreCoolingCeilingRange.lowerBound)))",
-            markerRPM: model.currentRPMMarker,
-            isEnabled: model.canAdjustControls,
-            onCommit: { model.setCustomPreCoolingCeilingRPM(Int($0)) }
-        )
-    }
-}
-
-private struct TemporaryFanTestControl: View {
-    @ObservedObject var model: AppModel
-    @State private var dragBuffer = RPMSliderDragBuffer(value: 0)
-
-    private var externalValue: Double {
-        Double(model.temporaryTestRPMForControls)
-    }
-
-    private var displayedValue: Double {
-        dragBuffer.visibleValue
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Toggle(
-                    "Test fan RPM",
-                    isOn: Binding(
-                        get: { model.isTemporaryFanTestActive },
-                        set: { model.setTemporaryFanTestActive($0) }
-                    )
-                )
-                .toggleStyle(.checkbox)
-                .disabled(!model.canAdjustControls)
-
-                Spacer()
-
-                Text(model.isTemporaryFanTestActive
-                    ? DisplayFormatters.fanRPM(Int(displayedValue))
-                    : "Off")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
-
-            Slider(
-                value: Binding(
-                    get: { dragBuffer.visibleValue },
-                    set: { newValue in
-                        if !dragBuffer.isEditing {
-                            dragBuffer.beginEditing()
-                        }
-                        dragBuffer.updateDraftValue(newValue)
-                        if model.isTemporaryFanTestActive {
-                            model.setTemporaryTestRPM(Int(newValue))
-                        }
-                    }
-                ),
-                in: model.temporaryTestRPMRange,
-                step: 50,
-                onEditingChanged: { isEditing in
-                    if isEditing {
-                        dragBuffer.beginEditing()
-                    } else {
-                        model.setTemporaryTestRPM(Int(dragBuffer.commitEditing()))
-                    }
-                }
-            )
-            .disabled(!model.canAdjustControls || !model.isTemporaryFanTestActive)
-            .onAppear {
-                dragBuffer.updateExternalValue(externalValue)
-            }
-            .onChange(of: externalValue) { _, newValue in
-                dragBuffer.updateExternalValue(newValue)
-            }
-            .overlay {
-                RPMMarkerLine(
-                    range: model.temporaryTestRPMRange,
-                    markerRPM: model.temporaryTestRPMMarker
-                )
-            }
-
-            HStack {
-                Text("Min \(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.lowerBound)))")
-                Spacer()
-                if let markerRPM = model.temporaryTestRPMMarker {
-                    Text(DisplayFormatters.macOSBaselineRPM(markerRPM))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.76)
-                    Spacer()
-                }
-                Text(DisplayFormatters.fanRPM(Int(model.temporaryTestRPMRange.upperBound)))
-            }
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-
-            if let progressText = model.fanTargetProgressText {
-                Text(progressText)
+                Text("Aggressiveness")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                Spacer()
+                Text(coefficientText)
+                    .font(.caption2)
                     .monospacedDigit()
+                    .foregroundStyle(.blue)
             }
+
+            Picker("Aggressiveness", selection: $model.preCoolingStrength) {
+                ForEach(PreCoolingStrength.allCases) { strength in
+                    Text(strength.title).tag(strength)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .disabled(!model.canAdjustControls)
+
+            FanResponseCurveView(
+                strength: model.preCoolingStrength,
+                audibleRPM: model.audibleLineRPM,
+                range: model.gaugeFanRange
+            )
+            .frame(height: 128)
+
+            HStack(spacing: 14) {
+                legend(color: .blue, text: "your ramp")
+                legend(color: .secondary, text: "macOS")
+                legend(color: .orange, text: "audible")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func legend(color: Color, text: String) -> some View {
+        HStack(spacing: 5) {
+            Capsule().fill(color).frame(width: 14, height: 2)
+            Text(text)
+        }
+    }
+
+    private var coefficientText: String {
+        let s = model.preCoolingStrength
+        return "floor \(DisplayFormatters.plainRPM(s.floorRPM)) · ×\(String(format: "%.1f", s.gain)) · lead \(s.leadC)°"
+    }
+}
+
+private struct DetailsPanel: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(model.surfaceTelemetry, id: \.id) { item in
+                HStack(spacing: 8) {
+                    Button {
+                        model.togglePinned(item.id)
+                    } label: {
+                        Image(systemName: "pin")
+                            .foregroundStyle(model.pinnedTelemetry.contains(item.id) ? Color.accentColor : Color.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(model.pinnedTelemetry.contains(item.id) ? "Unpin \(item.label)" : "Pin \(item.label)")
+
+                    Text(item.label).foregroundStyle(.secondary)
+                    Spacer()
+                    Text(item.value)
+                }
+                .font(.caption)
+            }
+
+            Toggle(
+                "Launch at login",
+                isOn: Binding(
+                    get: { model.launchAtLogin },
+                    set: { model.setLaunchAtLogin($0) }
+                )
+            )
+            .toggleStyle(.checkbox)
+            .font(.caption)
+            .padding(.top, 2)
         }
     }
 }
@@ -420,137 +377,7 @@ private struct HardCoolControl: View {
                 step: 1
             )
             .disabled(!model.canAdjustControls)
-
-            HStack {
-                Text("35°C")
-                Spacer()
-                Text("40°C good bag target")
-                Spacer()
-                Text("55°C")
-            }
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
         }
-    }
-}
-
-private struct RPMControlShell: View {
-    var label: String
-    var systemImage: String
-    var value: Double
-    var range: ClosedRange<Double>
-    var lowerLabel: String
-    var markerRPM: Int?
-    var isEnabled: Bool
-    var commitsContinuously: Bool
-    var onCommit: (Double) -> Void
-    @State private var dragBuffer: RPMSliderDragBuffer
-
-    init(
-        label: String,
-        systemImage: String,
-        value: Double,
-        range: ClosedRange<Double>,
-        lowerLabel: String,
-        markerRPM: Int?,
-        isEnabled: Bool,
-        commitsContinuously: Bool = false,
-        onCommit: @escaping (Double) -> Void
-    ) {
-        self.label = label
-        self.systemImage = systemImage
-        self.value = value
-        self.range = range
-        self.lowerLabel = lowerLabel
-        self.markerRPM = markerRPM
-        self.isEnabled = isEnabled
-        self.commitsContinuously = commitsContinuously
-        self.onCommit = onCommit
-        self._dragBuffer = State(initialValue: RPMSliderDragBuffer(value: value))
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label(label, systemImage: systemImage)
-                Spacer()
-                Text(DisplayFormatters.fanRPM(Int(dragBuffer.visibleValue)))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
-
-            Slider(
-                value: Binding(
-                    get: { dragBuffer.visibleValue },
-                    set: { newValue in
-                        if !dragBuffer.isEditing {
-                            dragBuffer.beginEditing()
-                        }
-                        dragBuffer.updateDraftValue(newValue)
-                        if commitsContinuously {
-                            onCommit(newValue)
-                        }
-                    }
-                ),
-                in: range,
-                step: 50,
-                onEditingChanged: { isEditing in
-                    if isEditing {
-                        dragBuffer.beginEditing()
-                    } else {
-                        onCommit(dragBuffer.commitEditing())
-                    }
-                }
-            )
-            .disabled(!isEnabled)
-            .onAppear {
-                dragBuffer.updateExternalValue(value)
-            }
-            .onChange(of: value) { _, newValue in
-                dragBuffer.updateExternalValue(newValue)
-            }
-            .overlay {
-                RPMMarkerLine(range: range, markerRPM: markerRPM)
-            }
-
-            HStack {
-                Text(lowerLabel)
-                Spacer()
-                if let markerRPM {
-                    Text(DisplayFormatters.macOSBaselineRPM(markerRPM))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.76)
-                    Spacer()
-                }
-                Text(DisplayFormatters.fanRPM(Int(range.upperBound)))
-            }
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-        }
-    }
-}
-
-private struct RPMMarkerLine: View {
-    var range: ClosedRange<Double>
-    var markerRPM: Int?
-
-    var body: some View {
-        GeometryReader { geometry in
-            if let markerRPM, range.upperBound > range.lowerBound {
-                let normalized = min(
-                    max((Double(markerRPM) - range.lowerBound) / (range.upperBound - range.lowerBound), 0),
-                    1
-                )
-
-                Rectangle()
-                    .fill(Color.primary.opacity(0.55))
-                    .frame(width: 1, height: 18)
-                    .offset(x: normalized * geometry.size.width)
-                    .accessibilityHidden(true)
-            }
-        }
-        .allowsHitTesting(false)
     }
 }
 

@@ -86,6 +86,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var helperInstallStatus: HelperInstallStatus = .notRegistered
     @Published var showingSettings = false
+    @Published var nerdModeEnabled = false
+    @Published var pinnedTelemetry: Set<String> = []
 
     private let preferencesStore: PreferencesStore
     private let fanController: FanControllerProtocol
@@ -187,6 +189,95 @@ final class AppModel: ObservableObject {
 
     var currentRPMMarker: Int? {
         observedSystemBaselineRPM ?? fanRPM
+    }
+
+    // MARK: - Redesigned popover surface
+
+    enum QuietStatus {
+        case quiet
+        case audible
+        case limited
+    }
+
+    /// Glance verdict for the status pill: are the fans below the audible line?
+    var quietStatus: QuietStatus {
+        if status.isLimited {
+            return .limited
+        }
+        guard let fanRPM else {
+            return .quiet
+        }
+        return fanRPM >= quietCeilingRPMForControls ? .audible : .quiet
+    }
+
+    var gaugeFanRange: FanRange {
+        fans.first?.range ?? FanRange(minimumRPM: 1_200, maximumRPM: 6_200)
+    }
+
+    /// The fan speed the gauge bar sits at. In Manual the user-set target leads the
+    /// measured RPM so the throttle feels responsive; otherwise show the live reading.
+    var gaugeFanRPM: Int {
+        if selectedMode == .manual {
+            return manualTargetRPMForControls
+        }
+        return fanRPM ?? gaugeFanRange.minimumRPM
+    }
+
+    /// The user-calibrated audible line. Backed by the quiet ceiling (the cap the
+    /// controller holds the fan under).
+    var audibleLineRPM: Int {
+        quietCeilingRPMForControls
+    }
+
+    func setAudibleLineRPM(_ rpm: Int) {
+        setQuietCeilingRPM(rpm)
+    }
+
+    /// Grabbing the gauge bar takes manual control of the fan.
+    func driveFanManually(toRPM rpm: Int) {
+        if selectedMode != .manual {
+            selectedMode = .manual
+        }
+        setManualTargetRPM(rpm)
+    }
+
+    func returnToAutoStrategy() {
+        setSelectedMode(.preventFanBlast)
+    }
+
+    func togglePinned(_ id: String) {
+        if pinnedTelemetry.contains(id) {
+            pinnedTelemetry.remove(id)
+        } else {
+            pinnedTelemetry.insert(id)
+        }
+    }
+
+    struct TelemetryItem: Identifiable {
+        let id: String
+        let label: String
+        let chip: String
+        let value: String
+    }
+
+    /// Demoted telemetry rows shown in Details and promotable to the surface via pins.
+    var surfaceTelemetry: [TelemetryItem] {
+        let boostText: String
+        if case let .preCooling(boostRPM) = status, boostRPM > 0 {
+            boostText = "+\(DisplayFormatters.plainRPM(boostRPM)) RPM"
+        } else {
+            boostText = "—"
+        }
+        return [
+            TelemetryItem(id: "macos", label: "macOS asks", chip: "macOS",
+                          value: DisplayFormatters.fanRPM(currentRPMMarker)),
+            TelemetryItem(id: "boost", label: "Pre-cool boost", chip: "boost",
+                          value: boostText),
+            TelemetryItem(id: "helper", label: "Helper service", chip: "helper",
+                          value: helperInstallStatus.displayText),
+            TelemetryItem(id: "temp", label: "Sensor temp", chip: "temp",
+                          value: DisplayFormatters.temperature(temperatureC)),
+        ]
     }
 
     var temporaryTestRPMMarker: Int? {
